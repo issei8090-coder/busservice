@@ -1,0 +1,800 @@
+{
+  "version": 2,
+  "timetable": [
+    {
+      "day": "土曜",
+      "operationNo": 1,
+      "columnNo": 1,
+      "plannedDeparture": "9:00",
+      "plannedArrival": "9:25",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 1,
+      "columnNo": 2,
+      "plannedDeparture": "9:27",
+      "plannedArrival": "10:05",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 1,
+      "columnNo": 3,
+      "plannedDeparture": "10:55",
+      "plannedArrival": "11:35",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 1,
+      "columnNo": 4,
+      "plannedDeparture": "12:00",
+      "plannedArrival": "12:45",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 1,
+      "columnNo": 5,
+      "plannedDeparture": "16:30",
+      "plannedArrival": "17:30",
+      "route": "学校 → 南古谷 → 本川越 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 2,
+      "columnNo": 1,
+      "plannedDeparture": "8:20",
+      "plannedArrival": "9:20",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 2,
+      "columnNo": 2,
+      "plannedDeparture": "10:15",
+      "plannedArrival": "10:55",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 2,
+      "columnNo": 3,
+      "plannedDeparture": "11:00",
+      "plannedArrival": "12:00",
+      "route": "学校 → 本川越 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 2,
+      "columnNo": 4,
+      "plannedDeparture": "13:15",
+      "plannedArrival": "13:45",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 2,
+      "columnNo": 5,
+      "plannedDeparture": "16:10",
+      "plannedArrival": "16:45",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 3,
+      "columnNo": 1,
+      "plannedDeparture": "8:50",
+      "plannedArrival": "9:25",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 3,
+      "columnNo": 2,
+      "plannedDeparture": "9:30",
+      "plannedArrival": "10:30",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 3,
+      "columnNo": 3,
+      "plannedDeparture": "11:15",
+      "plannedArrival": "11:55",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 3,
+      "columnNo": 4,
+      "plannedDeparture": "13:30",
+      "plannedArrival": "14:15",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 3,
+      "columnNo": 5,
+      "plannedDeparture": "16:15",
+      "plannedArrival": "16:50",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 4,
+      "columnNo": 1,
+      "plannedDeparture": "8:55",
+      "plannedArrival": "10:00",
+      "route": "学校 → 本川越 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 4,
+      "columnNo": 2,
+      "plannedDeparture": "10:35",
+      "plannedArrival": "11:15",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 4,
+      "columnNo": 3,
+      "plannedDeparture": "12:00",
+      "plannedArrival": "13:00",
+      "route": "学校 → 本川越 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 4,
+      "columnNo": 4,
+      "plannedDeparture": "16:30",
+      "plannedArrival": "17:05",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 5,
+      "columnNo": 1,
+      "plannedDeparture": "9:40",
+      "plannedArrival": "10:02",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 5,
+      "columnNo": 2,
+      "plannedDeparture": "10:05",
+      "plannedArrival": "11:00",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 5,
+      "columnNo": 3,
+      "plannedDeparture": "12:50",
+      "plannedArrival": "13:55",
+      "route": "学校 → 南古谷 → 本川越 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 5,
+      "columnNo": 4,
+      "plannedDeparture": "14:35",
+      "plannedArrival": "15:05",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 5,
+      "columnNo": 5,
+      "plannedDeparture": "16:20",
+      "plannedArrival": "16:55",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 6,
+      "columnNo": 1,
+      "plannedDeparture": "9:40",
+      "plannedArrival": "10:20",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 6,
+      "columnNo": 2,
+      "plannedDeparture": "10:25",
+      "plannedArrival": "11:25",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 6,
+      "columnNo": 3,
+      "plannedDeparture": "12:30",
+      "plannedArrival": "13:15",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 6,
+      "columnNo": 4,
+      "plannedDeparture": "14:30",
+      "plannedArrival": "15:25",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 6,
+      "columnNo": 5,
+      "plannedDeparture": "16:20",
+      "plannedArrival": "17:15",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 7,
+      "columnNo": 1,
+      "plannedDeparture": "9:55",
+      "plannedArrival": "10:35",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 7,
+      "columnNo": 2,
+      "plannedDeparture": "11:35",
+      "plannedArrival": "12:15",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 7,
+      "columnNo": 3,
+      "plannedDeparture": "13:30",
+      "plannedArrival": "14:40",
+      "route": "学校 → 本川越 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 7,
+      "columnNo": 4,
+      "plannedDeparture": "16:10",
+      "plannedArrival": "16:35",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 8,
+      "columnNo": 1,
+      "plannedDeparture": "10:00",
+      "plannedArrival": "10:25",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 8,
+      "columnNo": 2,
+      "plannedDeparture": "10:40",
+      "plannedArrival": "11:02",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 8,
+      "columnNo": 3,
+      "plannedDeparture": "11:20",
+      "plannedArrival": "11:42",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 8,
+      "columnNo": 4,
+      "plannedDeparture": "13:00",
+      "plannedArrival": "13:45",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 8,
+      "columnNo": 5,
+      "plannedDeparture": "15:30",
+      "plannedArrival": "16:05",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 8,
+      "columnNo": 6,
+      "plannedDeparture": "16:15",
+      "plannedArrival": "16:40",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 9,
+      "columnNo": 1,
+      "plannedDeparture": "10:20",
+      "plannedArrival": "10:42",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 9,
+      "columnNo": 2,
+      "plannedDeparture": "11:00",
+      "plannedArrival": "11:22",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 9,
+      "columnNo": 3,
+      "plannedDeparture": "12:15",
+      "plannedArrival": "12:45",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 9,
+      "columnNo": 4,
+      "plannedDeparture": "14:30",
+      "plannedArrival": "15:15",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "土曜",
+      "operationNo": 9,
+      "columnNo": 5,
+      "plannedDeparture": "16:15",
+      "plannedArrival": "17:10",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 1,
+      "columnNo": 1,
+      "plannedDeparture": "8:20",
+      "plannedArrival": "9:20",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 1,
+      "columnNo": 2,
+      "plannedDeparture": "9:25",
+      "plannedArrival": "10:05",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 1,
+      "columnNo": 3,
+      "plannedDeparture": "11:00",
+      "plannedArrival": "12:00",
+      "route": "本川越 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 1,
+      "columnNo": 4,
+      "plannedDeparture": "13:00",
+      "plannedArrival": "13:45",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 1,
+      "columnNo": 5,
+      "plannedDeparture": "15:00",
+      "plannedArrival": "15:45",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 1,
+      "columnNo": 6,
+      "plannedDeparture": "16:30",
+      "plannedArrival": "17:05",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 2,
+      "columnNo": 1,
+      "plannedDeparture": "8:45",
+      "plannedArrival": "9:25",
+      "route": "ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 2,
+      "columnNo": 2,
+      "plannedDeparture": "9:30",
+      "plannedArrival": "10:30",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 2,
+      "columnNo": 3,
+      "plannedDeparture": "11:05",
+      "plannedArrival": "11:45",
+      "route": "ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 2,
+      "columnNo": 4,
+      "plannedDeparture": "12:30",
+      "plannedArrival": "13:05",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 2,
+      "columnNo": 5,
+      "plannedDeparture": "13:30",
+      "plannedArrival": "14:40",
+      "route": "学校 → 南古谷 → 本川越 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 2,
+      "columnNo": 6,
+      "plannedDeparture": "16:15",
+      "plannedArrival": "16:50",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 2,
+      "columnNo": 7,
+      "plannedDeparture": "17:00",
+      "plannedArrival": "17:55",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 3,
+      "columnNo": 1,
+      "plannedDeparture": "8:55",
+      "plannedArrival": "10:00",
+      "route": "本川越 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 3,
+      "columnNo": 2,
+      "plannedDeparture": "10:05",
+      "plannedArrival": "11:00",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 3,
+      "columnNo": 3,
+      "plannedDeparture": "11:35",
+      "plannedArrival": "12:15",
+      "route": "ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 3,
+      "columnNo": 4,
+      "plannedDeparture": "14:00",
+      "plannedArrival": "14:45",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 3,
+      "columnNo": 5,
+      "plannedDeparture": "16:15",
+      "plannedArrival": "16:35",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 4,
+      "columnNo": 1,
+      "plannedDeparture": "9:00",
+      "plannedArrival": "9:25",
+      "route": "南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 4,
+      "columnNo": 2,
+      "plannedDeparture": "9:35",
+      "plannedArrival": "10:00",
+      "route": "南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 4,
+      "columnNo": 3,
+      "plannedDeparture": "10:05",
+      "plannedArrival": "10:45",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 4,
+      "columnNo": 4,
+      "plannedDeparture": "11:20",
+      "plannedArrival": "11:42",
+      "route": "南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 4,
+      "columnNo": 5,
+      "plannedDeparture": "12:15",
+      "plannedArrival": "12:55",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 4,
+      "columnNo": 6,
+      "plannedDeparture": "14:00",
+      "plannedArrival": "14:55",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 4,
+      "columnNo": 7,
+      "plannedDeparture": "16:15",
+      "plannedArrival": "17:10",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 5,
+      "columnNo": 1,
+      "plannedDeparture": "9:55",
+      "plannedArrival": "10:25",
+      "route": "南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 5,
+      "columnNo": 2,
+      "plannedDeparture": "10:35",
+      "plannedArrival": "11:05",
+      "route": "南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 5,
+      "columnNo": 3,
+      "plannedDeparture": "11:40",
+      "plannedArrival": "12:05",
+      "route": "南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 5,
+      "columnNo": 4,
+      "plannedDeparture": "12:30",
+      "plannedArrival": "13:15",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 5,
+      "columnNo": 5,
+      "plannedDeparture": "14:30",
+      "plannedArrival": "15:35",
+      "route": "学校 → 南古谷 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 5,
+      "columnNo": 6,
+      "plannedDeparture": "16:30",
+      "plannedArrival": "17:35",
+      "route": "学校 → 南古谷 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 6,
+      "columnNo": 1,
+      "plannedDeparture": "9:15",
+      "plannedArrival": "10:15",
+      "route": "本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 6,
+      "columnNo": 2,
+      "plannedDeparture": "10:20",
+      "plannedArrival": "10:45",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 6,
+      "columnNo": 3,
+      "plannedDeparture": "11:25",
+      "plannedArrival": "12:25",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 6,
+      "columnNo": 4,
+      "plannedDeparture": "13:15",
+      "plannedArrival": "13:45",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 6,
+      "columnNo": 5,
+      "plannedDeparture": "15:00",
+      "plannedArrival": "16:00",
+      "route": "学校 → 本川越 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 6,
+      "columnNo": 6,
+      "plannedDeparture": "17:10",
+      "plannedArrival": "",
+      "route": "学校 → 南古谷 → 本川越 → 南古谷"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 7,
+      "columnNo": 1,
+      "plannedDeparture": "9:40",
+      "plannedArrival": "10:20",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 7,
+      "columnNo": 2,
+      "plannedDeparture": "10:22",
+      "plannedArrival": "11:00",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 7,
+      "columnNo": 3,
+      "plannedDeparture": "11:03",
+      "plannedArrival": "11:25",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 7,
+      "columnNo": 4,
+      "plannedDeparture": "12:30",
+      "plannedArrival": "13:25",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 7,
+      "columnNo": 5,
+      "plannedDeparture": "15:15",
+      "plannedArrival": "15:45",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 7,
+      "columnNo": 6,
+      "plannedDeparture": "17:30",
+      "plannedArrival": "17:55",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 8,
+      "columnNo": 1,
+      "plannedDeparture": "9:55",
+      "plannedArrival": "10:35",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 8,
+      "columnNo": 2,
+      "plannedDeparture": "10:37",
+      "plannedArrival": "11:15",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 8,
+      "columnNo": 3,
+      "plannedDeparture": "12:00",
+      "plannedArrival": "12:45",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 8,
+      "columnNo": 4,
+      "plannedDeparture": "14:10",
+      "plannedArrival": "14:40",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 8,
+      "columnNo": 5,
+      "plannedDeparture": "15:30",
+      "plannedArrival": "16:35",
+      "route": "学校 → 南古谷 → 本川越 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 9,
+      "columnNo": 1,
+      "plannedDeparture": "9:55",
+      "plannedArrival": "10:20",
+      "route": "南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 9,
+      "columnNo": 2,
+      "plannedDeparture": "10:25",
+      "plannedArrival": "11:25",
+      "route": "学校 → 本川越 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 9,
+      "columnNo": 3,
+      "plannedDeparture": "12:15",
+      "plannedArrival": "12:45",
+      "route": "学校 → 南古谷 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 9,
+      "columnNo": 4,
+      "plannedDeparture": "13:30",
+      "plannedArrival": "14:15",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 9,
+      "columnNo": 5,
+      "plannedDeparture": "15:30",
+      "plannedArrival": "16:05",
+      "route": "学校 → ふじみ野 → 学校"
+    },
+    {
+      "day": "日曜",
+      "operationNo": 9,
+      "columnNo": 6,
+      "plannedDeparture": "17:10",
+      "plannedArrival": "17:45",
+      "route": "学校 → ふじみ野 → 学校"
+    }
+  ],
+  "runs": {},
+  "events": [
+    {
+      "id": "initial-import",
+      "runId": "",
+      "type": "import",
+      "summary": "初期ダイヤを98便取り込み",
+      "createdAt": "2026-09-19T16:27:31.723Z"
+    }
+  ],
+  "processedRequests": {}
+}
