@@ -7,6 +7,7 @@
   <title>学校バス運行管理</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/enhancements.css">
+  <link rel="stylesheet" href="/routes.css">
 </head>
 <body>
   <div class="app-shell">
@@ -19,6 +20,7 @@
       <nav aria-label="管理項目">
         <button class="nav-button active" data-view="operations" aria-current="page"><span class="dot"></span>当日運行</button>
         <button class="nav-button" data-view="timetable"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>ダイヤ取込</button>
+        <button class="nav-button" data-view="routes"><svg viewBox="0 0 24 24"><path d="M4 18c3-6 5-9 8-9s4 4 8-3M4 18h.01M20 6h.01"/></svg>経路管理</button>
         <button class="nav-button" data-view="history"><svg viewBox="0 0 24 24"><path d="M12 7v5l3 2M4 12a8 8 0 1 0 2-5.3L4 9V4h5"/></svg>操作履歴</button>
       </nav>
       <div class="sidebar-foot"><span class="health-dot"></span><span>Go処理側へ接続中</span></div>
@@ -101,6 +103,43 @@
         <section id="historyView" class="view">
           <section class="card history-panel"><div class="panel-heading"><h2>操作履歴</h2><p>直近100件の出発、到着、人数変更、取込を表示します。</p></div><div id="historyContent"></div></section>
         </section>
+
+        <section id="routesView" class="view">
+          <div class="route-toolbar card">
+            <div><h2>経路管理</h2><p>路線、方向、時間帯、車両ごとに道路経路を登録します。</p></div>
+            <div class="route-toolbar-actions"><button type="button" class="button secondary" id="newRouteProfile">新しい経路</button><button type="button" class="button primary" id="autoAssignRoutes">条件で便へ割当</button></div>
+          </div>
+          <div class="route-workspace">
+            <aside class="route-profile-panel card" aria-label="登録済み経路">
+              <div class="route-profile-heading"><strong>登録済み経路</strong><span id="routeProfileCount">0件</span></div>
+              <div id="routeProfileList" class="route-profile-list"></div>
+            </aside>
+            <section class="route-editor card" aria-labelledby="routeEditorTitle">
+              <form id="routeProfileForm">
+                <div class="route-editor-heading"><div><span>経路型の編集</span><h2 id="routeEditorTitle">新しい経路</h2></div><span class="route-save-state" id="routeSaveState" role="status">未保存</span></div>
+                <input id="routeProfileId" type="hidden">
+                <div class="route-form-grid">
+                  <label class="route-name-field"><span>経路名</span><input id="routeName" maxlength="80" placeholder="例 本川越 復路 夕方 2号車" required></label>
+                  <label><span>路線</span><select id="routeLine" required><option value="ふじみ野">ふじみ野線</option><option value="南古谷">南古谷線</option><option value="本川越">本川越線</option></select></label>
+                  <label><span>方向</span><select id="routeDirection" required><option value="outbound">往路 学校発</option><option value="inbound">復路 学校着</option></select></label>
+                  <label><span>開始時刻</span><input id="routeTimeFrom" type="time"></label>
+                  <label><span>終了時刻</span><input id="routeTimeTo" type="time"></label>
+                  <label><span>車両条件</span><input id="routeVehicleNo" maxlength="30" placeholder="空欄なら全車両"></label>
+                  <label><span>線の色</span><input id="routeColor" type="color" value="#1e60aa"></label>
+                </div>
+                <p class="route-condition-note">時刻と車両を空欄にすると、その路線と方向の基本経路になります。条件が細かい経路を優先して割り当てます。</p>
+                <div class="route-map-heading"><div><strong>道路経路</strong><span id="routeMapInstruction">地図を押して地点を順に追加。鍵盤操作は矢印で移動し、Enterで中心地点を追加</span></div><div class="route-map-summary"><span id="routeDistance">距離 未計算</span><span id="routeDuration">所要 未計算</span></div></div>
+                <div class="route-map-shell">
+                  <div id="routeMap" class="osm-map" tabindex="0" aria-label="経路編集地図" aria-describedby="routeMapInstruction"></div>
+                  <div class="route-map-controls" aria-label="地図操作"><button type="button" id="routeZoomIn" aria-label="地図を拡大">＋</button><button type="button" id="routeZoomOut" aria-label="地図を縮小">−</button><button type="button" id="routeFit" aria-label="経路全体を表示">全体</button></div>
+                  <a class="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>
+                </div>
+                <div class="route-point-tools"><span id="routePointCount">地点 0件</span><button type="button" class="button secondary" id="routeUndoPoint">1点戻す</button><button type="button" class="button secondary" id="routeClearPoints">全地点を消す</button><button type="button" class="button route-resolve-button" id="routeResolve">道路に沿って作成</button></div>
+                <div class="route-form-actions"><button type="button" class="button danger-text" id="deleteRouteProfile" hidden>経路を削除</button><div><button type="button" class="button secondary" id="cancelRouteEdit">変更を戻す</button><button type="submit" class="button primary" id="saveRouteProfile">経路を保存</button></div></div>
+              </form>
+            </section>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -114,6 +153,7 @@
       <div class="drive-clock" aria-label="現在時刻"><strong id="driveClock">--:--</strong><span id="driveDate"></span></div>
       <div class="drive-header-actions">
         <span class="connection-status" id="driveConnection" role="status"><i></i><span>通信確認中</span></span>
+        <button type="button" class="drive-operation-button" id="driveOperationButton"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7h11M8 12h11M8 17h11M4 7h.01M4 12h.01M4 17h.01"/></svg><span>運用変更</span></button>
         <button type="button" class="drive-awake-button" id="keepAwakeButton" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v2m0 14v2M5.6 5.6 7 7m10 10 1.4 1.4M3 12h2m14 0h2M5.6 18.4 7 17m10-10 1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg><span>画面消灯を防ぐ</span></button>
         <button type="button" class="drive-settings-button" id="driveSettingsButton"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 12H2m20 0h-2M12 4V2m0 20v-2M6.3 6.3 4.9 4.9m14.2 14.2-1.4-1.4m0-11.4 1.4-1.4M4.9 19.1l1.4-1.4"/></svg><span>運用設定</span></button>
         <button type="button" class="drive-exit-button" id="exitDriveButton" aria-label="運行集中を終了">終了</button>
@@ -130,6 +170,8 @@
         <label><span>乗車人数</span><input id="passengerCount" type="number" min="0" max="999" required></label>
         <label><span>車両番号</span><input id="vehicleNo" maxlength="30" placeholder="例 3号車"></label>
         <label><span>担当者</span><input id="driverName" maxlength="60"></label>
+        <label><span>往路経路</span><select id="runOutboundRouteProfile"><option value="">未割当</option></select></label>
+        <label><span>復路経路</span><select id="runInboundRouteProfile"><option value="">未割当</option></select></label>
         <label class="full"><span>連絡事項</span><textarea id="note" maxlength="500" rows="4" placeholder="忘れ物、乗車支援、道路状況など"></textarea></label>
       </div>
       <div class="danger-actions"><button type="button" class="button danger-text" id="cancelRunButton">運休にする</button><button type="button" class="button secondary" id="resetRunButton">待機へ戻す</button></div>
@@ -166,5 +208,6 @@
   <div id="toastRegion" class="toast-region" aria-live="polite"></div>
   <div id="busyOverlay" class="busy-overlay" hidden></div>
   <script src="/app.js" defer></script>
+  <script src="/routes.js" defer></script>
 </body>
 </html>

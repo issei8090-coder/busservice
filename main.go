@@ -15,6 +15,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"sort"
@@ -62,7 +63,30 @@ type Run struct {
 	Longitude             float64 `json:"longitude"`
 	LocationAccuracy      float64 `json:"locationAccuracy"`
 	LocationUpdatedAt     string  `json:"locationUpdatedAt"`
+	OutboundRouteProfileID string `json:"outboundRouteProfileId"`
+	InboundRouteProfileID  string `json:"inboundRouteProfileId"`
 	UpdatedAt             string `json:"updatedAt"`
+}
+
+type GeoPoint struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
+type RouteProfile struct {
+	ID              string     `json:"id"`
+	Name            string     `json:"name"`
+	Line            string     `json:"line"`
+	Direction       string     `json:"direction"`
+	TimeFrom        string     `json:"timeFrom"`
+	TimeTo          string     `json:"timeTo"`
+	VehicleNo       string     `json:"vehicleNo"`
+	Color           string     `json:"color"`
+	Waypoints       []GeoPoint `json:"waypoints"`
+	Geometry        []GeoPoint `json:"geometry"`
+	DistanceMeters  float64    `json:"distanceMeters"`
+	DurationSeconds float64    `json:"durationSeconds"`
+	UpdatedAt       string     `json:"updatedAt"`
 }
 
 type Event struct {
@@ -79,6 +103,7 @@ type State struct {
 	Runs              map[string]*Run   `json:"runs"`
 	Events            []Event           `json:"events"`
 	ProcessedRequests map[string]string `json:"processedRequests,omitempty"`
+	RouteProfiles     map[string]*RouteProfile `json:"routeProfiles"`
 }
 
 type Store struct {
@@ -88,7 +113,7 @@ type Store struct {
 }
 
 func NewStore(filePath string) (*Store, error) {
-	s := &Store{filePath: filePath, state: State{Version: 2, Runs: map[string]*Run{}, ProcessedRequests: map[string]string{}}}
+	s := &Store{filePath: filePath, state: State{Version: 3, Runs: map[string]*Run{}, ProcessedRequests: map[string]string{}, RouteProfiles: map[string]*RouteProfile{}}}
 	data, err := os.ReadFile(filePath)
 	if errors.Is(err, os.ErrNotExist) {
 		return s, nil
@@ -105,7 +130,8 @@ func NewStore(filePath string) (*Store, error) {
 	if s.state.ProcessedRequests == nil {
 		s.state.ProcessedRequests = map[string]string{}
 	}
-	if s.state.Version < 2 { s.state.Version = 2 }
+	if s.state.RouteProfiles == nil { s.state.RouteProfiles = map[string]*RouteProfile{} }
+	if s.state.Version < 3 { s.state.Version = 3 }
 	return s, nil
 }
 
@@ -226,6 +252,8 @@ type DetailsInput struct {
 	Latitude          *float64 `json:"latitude"`
 	Longitude         *float64 `json:"longitude"`
 	LocationAccuracy  *float64 `json:"locationAccuracy"`
+	OutboundRouteProfileID *string `json:"outboundRouteProfileId"`
+	InboundRouteProfileID  *string `json:"inboundRouteProfileId"`
 	OccurredAt        string   `json:"occurredAt"`
 	RequestID         string   `json:"requestId"`
 }
@@ -273,6 +301,24 @@ func (s *Store) updateDetails(id string, input DetailsInput) (*Run, error) {
 		if value < 0 { value = 0 }
 		if value > 20 { value = 20 }
 		run.ProgressIndex = value
+		humanChange = true
+	}
+	if input.OutboundRouteProfileID != nil {
+		value := clean(*input.OutboundRouteProfileID, 100)
+		if value != "" {
+			profile, exists := s.state.RouteProfiles[value]
+			if !exists || profile.Direction != "outbound" { return nil, errors.New("往路経路が見つかりません") }
+		}
+		run.OutboundRouteProfileID = value
+		humanChange = true
+	}
+	if input.InboundRouteProfileID != nil {
+		value := clean(*input.InboundRouteProfileID, 100)
+		if value != "" {
+			profile, exists := s.state.RouteProfiles[value]
+			if !exists || profile.Direction != "inbound" { return nil, errors.New("復路経路が見つかりません") }
+		}
+		run.InboundRouteProfileID = value
 		humanChange = true
 	}
 	if input.Latitude != nil || input.Longitude != nil {
@@ -509,7 +555,145 @@ func routeFor(rows [][]string, col int) string {
 	return strings.Join(names, " → ")
 }
 
-type App struct { store *Store }
+type RouteProfileInput struct {
+	ID              string     `json:"id"`
+	Name            string     `json:"name"`
+	Line            string     `json:"line"`
+	Direction       string     `json:"direction"`
+	TimeFrom        string     `json:"timeFrom"`
+	TimeTo          string     `json:"timeTo"`
+	VehicleNo       string     `json:"vehicleNo"`
+	Color           string     `json:"color"`
+	Waypoints       []GeoPoint `json:"waypoints"`
+	Geometry        []GeoPoint `json:"geometry"`
+	DistanceMeters  float64    `json:"distanceMeters"`
+	DurationSeconds float64    `json:"durationSeconds"`
+}
+
+func validClock(value string) bool {
+	if value == "" { return true }
+	_, ok := clockMinutes(value)
+	return ok
+}
+
+func clockMinutes(value string) (int, bool) {
+	parts := strings.Split(value, ":")
+	if len(parts) != 2 { return 0, false }
+	hour, errHour := strconv.Atoi(parts[0])
+	minute, errMinute := strconv.Atoi(parts[1])
+	if errHour != nil || errMinute != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 { return 0, false }
+	return hour*60 + minute, true
+}
+
+func validPoint(point GeoPoint) bool {
+	return point.Latitude >= -90 && point.Latitude <= 90 && point.Longitude >= -180 && point.Longitude <= 180
+}
+
+func (s *Store) listRouteProfiles() []RouteProfile {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	profiles := make([]RouteProfile, 0, len(s.state.RouteProfiles))
+	for _, profile := range s.state.RouteProfiles { profiles = append(profiles, *profile) }
+	sort.Slice(profiles, func(i, j int) bool {
+		if profiles[i].Line != profiles[j].Line { return profiles[i].Line < profiles[j].Line }
+		if profiles[i].Direction != profiles[j].Direction { return profiles[i].Direction < profiles[j].Direction }
+		return profiles[i].Name < profiles[j].Name
+	})
+	return profiles
+}
+
+func (s *Store) saveRouteProfile(input RouteProfileInput) (*RouteProfile, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	input.Name = clean(input.Name, 80)
+	input.Line = clean(input.Line, 20)
+	input.Direction = clean(input.Direction, 20)
+	input.VehicleNo = clean(input.VehicleNo, 30)
+	input.Color = clean(input.Color, 20)
+	if input.Name == "" { return nil, errors.New("経路名を入力してください") }
+	if input.Line != "ふじみ野" && input.Line != "南古谷" && input.Line != "本川越" { return nil, errors.New("路線が正しくありません") }
+	if input.Direction != "outbound" && input.Direction != "inbound" { return nil, errors.New("方向が正しくありません") }
+	if !validClock(input.TimeFrom) || !validClock(input.TimeTo) { return nil, errors.New("時間帯が正しくありません") }
+	if len(input.Waypoints) < 2 || len(input.Waypoints) > 25 { return nil, errors.New("経由地点は2点から25点で指定してください") }
+	if len(input.Geometry) < 2 || len(input.Geometry) > 20000 { return nil, errors.New("道路経路が正しくありません") }
+	if input.Color != "" {
+		if len(input.Color) != 7 || input.Color[0] != '#' { return nil, errors.New("経路色が正しくありません") }
+		if _, err := hex.DecodeString(input.Color[1:]); err != nil { return nil, errors.New("経路色が正しくありません") }
+	}
+	for _, point := range append(append([]GeoPoint{}, input.Waypoints...), input.Geometry...) {
+		if !validPoint(point) { return nil, errors.New("地点情報が正しくありません") }
+	}
+	id := clean(input.ID, 100)
+	if id == "" { id = randomID() }
+	if input.Color == "" { input.Color = "#1e60aa" }
+	profile := &RouteProfile{ID:id, Name:input.Name, Line:input.Line, Direction:input.Direction, TimeFrom:input.TimeFrom, TimeTo:input.TimeTo, VehicleNo:input.VehicleNo, Color:input.Color, Waypoints:input.Waypoints, Geometry:input.Geometry, DistanceMeters:input.DistanceMeters, DurationSeconds:input.DurationSeconds, UpdatedAt:time.Now().In(jst).Format(time.RFC3339)}
+	s.state.RouteProfiles[id] = profile
+	s.addEventLocked("", "route-profile", fmt.Sprintf("経路 %sを保存", profile.Name))
+	if err := s.saveLocked(); err != nil { return nil, err }
+	copy := *profile
+	return &copy, nil
+}
+
+func (s *Store) deleteRouteProfile(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	profile, exists := s.state.RouteProfiles[id]
+	if !exists { return os.ErrNotExist }
+	delete(s.state.RouteProfiles, id)
+	for _, run := range s.state.Runs {
+		if run.OutboundRouteProfileID == id { run.OutboundRouteProfileID = "" }
+		if run.InboundRouteProfileID == id { run.InboundRouteProfileID = "" }
+	}
+	s.addEventLocked("", "route-profile", fmt.Sprintf("経路 %sを削除", profile.Name))
+	return s.saveLocked()
+}
+
+func routeDirection(route string) string {
+	parts := strings.Split(route, "→")
+	if len(parts) == 0 { return "" }
+	if strings.TrimSpace(parts[0]) == "学校" { return "outbound" }
+	if strings.TrimSpace(parts[len(parts)-1]) == "学校" { return "inbound" }
+	return ""
+}
+
+func clockInRange(value, from, to string) bool {
+	if from == "" && to == "" { return true }
+	current, ok := clockMinutes(value)
+	if !ok { return false }
+	if from != "" { if start, valid := clockMinutes(from); !valid || current < start { return false } }
+	if to != "" { if end, valid := clockMinutes(to); !valid || current > end { return false } }
+	return true
+}
+
+func (s *Store) autoAssignRouteProfiles(date, day string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	assigned := 0
+	for _, run := range s.state.Runs {
+		if run.ServiceDate != date || run.Day != day || run.Status == "arrived" || run.Status == "cancelled" { continue }
+		bestOutbound, bestOutboundScore := "", -1
+		bestInbound, bestInboundScore := "", -1
+		for _, profile := range s.state.RouteProfiles {
+			if !strings.Contains(run.Route, profile.Line) { continue }
+			if profile.VehicleNo != "" && profile.VehicleNo != run.VehicleNo { continue }
+			if !clockInRange(run.PlannedDeparture, profile.TimeFrom, profile.TimeTo) { continue }
+			score := 1
+			if profile.TimeFrom != "" || profile.TimeTo != "" { score += 2 }
+			if profile.VehicleNo != "" { score += 4 }
+			if profile.Direction == "outbound" && score > bestOutboundScore { bestOutbound, bestOutboundScore = profile.ID, score }
+			if profile.Direction == "inbound" && score > bestInboundScore { bestInbound, bestInboundScore = profile.ID, score }
+		}
+		if bestOutbound != "" && run.OutboundRouteProfileID != bestOutbound { run.OutboundRouteProfileID = bestOutbound; assigned++ }
+		if bestInbound != "" && run.InboundRouteProfileID != bestInbound { run.InboundRouteProfileID = bestInbound; assigned++ }
+	}
+	if assigned > 0 {
+		s.addEventLocked("", "route-assignment", fmt.Sprintf("条件により%d区間へ経路を割当", assigned))
+		if err := s.saveLocked(); err != nil { return 0, err }
+	}
+	return assigned, nil
+}
+
+type App struct { store *Store; routingBase string; httpClient *http.Client }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -525,7 +709,7 @@ func (a *App) dashboard(w http.ResponseWriter, r *http.Request) {
 	runs, events, err := a.store.dashboard(date, day)
 	if err != nil { writeJSON(w, 500, map[string]string{"error":"運行情報を保存できません"}); return }
 	timetableCount, runCount := a.store.info()
-	writeJSON(w, 200, map[string]any{"runs":runs, "events":events, "timetableCount":timetableCount, "runCount":runCount})
+	writeJSON(w, 200, map[string]any{"runs":runs, "events":events, "routeProfiles":a.store.listRouteProfiles(), "timetableCount":timetableCount, "runCount":runCount})
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, target any) bool {
@@ -534,6 +718,57 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, target any) bool {
 		writeJSON(w, 400, map[string]string{"error":"入力内容が正しくありません"}); return false
 	}
 	return true
+}
+
+func (a *App) routeProfiles(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet { writeJSON(w, 200, map[string]any{"routeProfiles":a.store.listRouteProfiles()}); return }
+	if r.Method == http.MethodPost {
+		var input RouteProfileInput
+		if !decodeJSON(w, r, &input) { return }
+		profile, err := a.store.saveRouteProfile(input)
+		if err != nil { writeJSON(w, 400, map[string]string{"error":err.Error()}); return }
+		writeJSON(w, 200, profile); return
+	}
+	http.NotFound(w, r)
+}
+
+func (a *App) routeProfileByID(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete { http.NotFound(w, r); return }
+	if err := a.store.deleteRouteProfile(r.PathValue("id")); errors.Is(err, os.ErrNotExist) { writeJSON(w, 404, map[string]string{"error":"経路が見つかりません"}); return } else if err != nil { writeJSON(w, 500, map[string]string{"error":"経路を削除できません"}); return }
+	writeJSON(w, 200, map[string]bool{"ok":true})
+}
+
+func (a *App) autoAssignRoutes(w http.ResponseWriter, r *http.Request) {
+	date, day := r.URL.Query().Get("date"), r.URL.Query().Get("day")
+	if _, err := time.Parse("2006-01-02", date); err != nil || (day != "土曜" && day != "日曜") { writeJSON(w, 400, map[string]string{"error":"運行日または曜日が正しくありません"}); return }
+	count, err := a.store.autoAssignRouteProfiles(date, day)
+	if err != nil { writeJSON(w, 500, map[string]string{"error":"経路を割り当てできません"}); return }
+	writeJSON(w, 200, map[string]int{"assigned":count})
+}
+
+func (a *App) resolveRoute(w http.ResponseWriter, r *http.Request) {
+	var input struct { Points []GeoPoint `json:"points"` }
+	if !decodeJSON(w, r, &input) { return }
+	if len(input.Points) < 2 || len(input.Points) > 25 { writeJSON(w, 400, map[string]string{"error":"地点は2点から25点で指定してください"}); return }
+	coordinates := make([]string, 0, len(input.Points))
+	for _, point := range input.Points {
+		if !validPoint(point) { writeJSON(w, 400, map[string]string{"error":"地点情報が正しくありません"}); return }
+		coordinates = append(coordinates, strconv.FormatFloat(point.Longitude, 'f', 6, 64)+","+strconv.FormatFloat(point.Latitude, 'f', 6, 64))
+	}
+	base, err := url.Parse(strings.TrimRight(a.routingBase, "/")+"/route/v1/driving/"+strings.Join(coordinates, ";"))
+	if err != nil { writeJSON(w, 500, map[string]string{"error":"経路処理の設定が正しくありません"}); return }
+	query := base.Query(); query.Set("overview", "full"); query.Set("geometries", "geojson"); query.Set("steps", "false"); base.RawQuery = query.Encode()
+	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, base.String(), nil)
+	req.Header.Set("User-Agent", "SchoolBusOperations/1.0")
+	response, err := a.httpClient.Do(req)
+	if err != nil { writeJSON(w, 502, map[string]string{"error":"道路経路を取得できません"}); return }
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK { writeJSON(w, 502, map[string]string{"error":"道路経路処理が応答しません"}); return }
+	var result struct { Code string `json:"code"`; Routes []struct { Distance float64 `json:"distance"`; Duration float64 `json:"duration"`; Geometry struct { Coordinates [][]float64 `json:"coordinates"` } `json:"geometry"` } `json:"routes"` }
+	if err := json.NewDecoder(io.LimitReader(response.Body, 10<<20)).Decode(&result); err != nil || result.Code != "Ok" || len(result.Routes) == 0 { writeJSON(w, 502, map[string]string{"error":"道路経路を作成できません"}); return }
+	geometry := make([]GeoPoint, 0, len(result.Routes[0].Geometry.Coordinates))
+	for _, coordinate := range result.Routes[0].Geometry.Coordinates { if len(coordinate) >= 2 { geometry = append(geometry, GeoPoint{Latitude:coordinate[1], Longitude:coordinate[0]}) } }
+	writeJSON(w, 200, map[string]any{"geometry":geometry, "distanceMeters":result.Routes[0].Distance, "durationSeconds":result.Routes[0].Duration})
 }
 
 func (a *App) runRoute(w http.ResponseWriter, r *http.Request) {
@@ -608,9 +843,9 @@ func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Referrer-Policy", "same-origin")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "geolocation=(self), fullscreen=(self)")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -627,12 +862,17 @@ func main() {
 		if err := store.replaceTimetable(templates); err != nil { log.Fatal(err) }
 		log.Printf("%d便を取り込みました", len(templates)); return
 	}
-	app := &App{store: store}
+	app := &App{store: store, routingBase: envOr("ROUTING_API", "https://router.project-osrm.org"), httpClient:&http.Client{Timeout:15*time.Second}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/dashboard", app.dashboard)
 	mux.HandleFunc("PATCH /api/runs/{id}", app.runRoute)
 	mux.HandleFunc("POST /api/runs/{id}/action", app.runRoute)
 	mux.HandleFunc("PATCH /api/operations/{operation}/assignment", app.operationAssignment)
+	mux.HandleFunc("GET /api/route-profiles", app.routeProfiles)
+	mux.HandleFunc("POST /api/route-profiles", app.routeProfiles)
+	mux.HandleFunc("DELETE /api/route-profiles/{id}", app.routeProfileByID)
+	mux.HandleFunc("POST /api/route-profiles/auto-assign", app.autoAssignRoutes)
+	mux.HandleFunc("POST /api/routes/resolve", app.resolveRoute)
 	mux.HandleFunc("POST /api/timetable/import", app.importTimetable)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
 	staticFiles, err := fs.Sub(webFiles, "web")

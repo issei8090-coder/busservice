@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "timetable": [
     {
       "day": "土曜",
@@ -796,5 +796,6 @@
       "createdAt": "2026-09-19T16:27:31.723Z"
     }
   ],
-  "processedRequests": {}
+  "processedRequests": {},
+  "routeProfiles": {}
 }

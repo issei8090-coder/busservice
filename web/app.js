@@ -3,6 +3,7 @@ const state = {
   day: "土曜",
   runs: [],
   events: [],
+  routeProfiles: [],
   status: "all",
   query: "",
   editing: null,
@@ -17,6 +18,8 @@ const state = {
   serverReachable: null,
   driveRunId: null,
   driveOperationNo: null,
+  driveChooserOpen: false,
+  driveSelections: readStoredJSON("busDriveSelections", {}),
   driveSettings: readStoredJSON("busDriveSettings", { vehicleNo: "", driverName: "", capacity: 55, audioEnabled: true, gpsEnabled: false }),
   offlineQueue: readStoredJSON("busOfflineQueue", []),
   syncingOffline: false,
@@ -176,14 +179,16 @@ async function loadDashboard(silent = false) {
     const data = await api(`/api/dashboard?date=${encodeURIComponent(state.date)}&day=${encodeURIComponent(state.day)}`);
     state.runs = data.runs || [];
     state.events = data.events || [];
+    state.routeProfiles = data.routeProfiles || [];
     $("#timetableCount").textContent = `${data.timetableCount || 0}便`;
-    storeJSON(cacheKey, { runs: state.runs, events: state.events, timetableCount: data.timetableCount || 0 });
+    storeJSON(cacheKey, { runs: state.runs, events: state.events, routeProfiles: state.routeProfiles, timetableCount: data.timetableCount || 0 });
     renderAll();
   } catch (error) {
     const cached = readStoredJSON(cacheKey, null);
     if (error.networkFailure && cached?.runs) {
       state.runs = cached.runs;
       state.events = cached.events || [];
+      state.routeProfiles = cached.routeProfiles || [];
       $("#timetableCount").textContent = `${cached.timetableCount || 0}便`;
       renderAll();
       toast("通信がないため保存済み情報を表示しています", "error");
@@ -268,16 +273,44 @@ function nextRunAfter(run) {
   return state.runs.slice(Math.max(0, index + 1)).find((item) => item.operationNo === run?.operationNo && !["arrived", "cancelled"].includes(item.status)) || null;
 }
 
+function driveSelectionKey() {
+  return `${state.date}|${state.day}`;
+}
+
+function driveOperationRuns(operationNo = state.driveOperationNo) {
+  return state.runs.filter((run) => run.operationNo === Number(operationNo));
+}
+
+function driveOperations() {
+  const operations = [...new Set(state.runs.map((run) => run.operationNo))].sort((a, b) => a - b);
+  return operations.map((operationNo) => {
+    const runs = driveOperationRuns(operationNo);
+    const active = runs.filter((run) => !["arrived", "cancelled"].includes(run.status));
+    const assigned = runs.find((run) => run.vehicleNo || run.driverName) || runs[0];
+    return { operationNo, runs, active, assigned, first: runs[0], last: runs[runs.length - 1] };
+  });
+}
+
+function initialRunForOperation(operationNo) {
+  const runs = driveOperationRuns(operationNo);
+  return runs.find((run) => run.status === "departed") || runs.find((run) => run.status === "boarding") || runs.find((run) => run.status === "waiting") || runs[0] || null;
+}
+
 function driveRun() {
   const selected = state.runs.find((item) => item.id === state.driveRunId);
-  if (selected && !["arrived", "cancelled"].includes(selected.status)) return selected;
-  const nextInOperation = state.runs.find((item) => item.operationNo === state.driveOperationNo && !["arrived", "cancelled"].includes(item.status));
-  return nextInOperation || priorityRun();
+  if (selected && selected.operationNo === state.driveOperationNo) return selected;
+  if (state.driveOperationNo) return initialRunForOperation(state.driveOperationNo);
+  return null;
 }
 
 function routeStops(run) {
   const stops = String(run?.route || "").split("→").map((stop) => stop.trim()).filter(Boolean);
   return stops.length ? stops : ["経路未設定"];
+}
+
+function routeProfileFor(run, direction = "outbound") {
+  const id = direction === "inbound" ? run?.inboundRouteProfileId : run?.outboundRouteProfileId;
+  return state.routeProfiles.find((profile) => profile.id === id) || null;
 }
 
 function capacityInfo(run) {
@@ -306,15 +339,64 @@ function routeProgressMarkup(run) {
   const stops = routeStops(run);
   const index = Math.max(0, Math.min(stops.length - 1, Number(run.progressIndex || 0)));
   const gps = gpsDisplay(run);
+  const outbound = routeProfileFor(run, "outbound");
+  const inbound = routeProfileFor(run, "inbound");
+  const profiles = [outbound, inbound].filter(Boolean);
+  const routeMap = profiles.length ? `<div class="drive-route-map-heading"><strong>${profiles.map((profile) => escapeHTML(profile.name)).join(" ／ ")}</strong><span>往路と復路を表示</span></div><div class="drive-route-map-shell"><div id="driveRouteMap" class="drive-route-map" aria-label="選択経路と現在地"></div><a class="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a></div>` : `<div class="drive-route-unassigned">往路と復路の走行経路が未割当です。便情報または経路管理から選択してください。</div>`;
   return `<section class="drive-route-progress" aria-labelledby="driveProgressHeading">
     <div class="drive-progress-heading"><div><span>経路進捗</span><strong id="driveProgressHeading">現在地 ${escapeHTML(stops[index])}</strong></div><div class="drive-gps-state" role="status" aria-live="polite" aria-atomic="true"><span id="driveGpsStatus">${escapeHTML(gps.status)}</span><strong id="driveGpsCoordinates">${escapeHTML(gps.coordinates)}</strong><small id="driveGpsDetail">${escapeHTML(gps.detail)}</small></div></div>
     <ol class="drive-stop-list">${stops.map((stop, stopIndex) => `<li class="${stopIndex < index ? "done" : stopIndex === index ? "current" : ""}"><i></i><span>${escapeHTML(stop)}</span></li>`).join("")}</ol>
     <div class="drive-progress-actions"><button type="button" data-progress-delta="-1" data-id="${escapeHTML(run.id)}" ${index === 0 ? "disabled" : ""}>前の地点</button><button type="button" data-gps-retry>GPS再取得</button><button type="button" data-progress-delta="1" data-id="${escapeHTML(run.id)}" ${index >= stops.length - 1 ? "disabled" : ""}>次の地点</button></div>
+    ${routeMap}
+  </section>`;
+}
+
+function renderDriveChooser() {
+  const operations = driveOperations();
+  const previous = Number(state.driveSelections[driveSelectionKey()] || 0);
+  $("#driveServiceLabel").textContent = `${state.date}　${state.day}運行`;
+  $("#driveSettingsButton").disabled = true;
+  $("#driveContent").innerHTML = `<section class="drive-operation-chooser" aria-labelledby="driveChooserHeading">
+    <div class="drive-chooser-copy"><span>運転表示を始める</span><h3 id="driveChooserHeading">今日の担当運用を選択</h3><p>選択した運用の全便を左右に動かして確認できます。</p></div>
+    <div class="drive-operation-grid">${operations.map((item) => {
+      const current = item.runs.find((run) => run.status === "departed" || run.status === "boarding");
+      const status = current ? (current.status === "departed" ? "運行中" : "乗車受付中") : item.active.length ? `残り${item.active.length}便` : "完了";
+      return `<button type="button" class="drive-operation-card ${item.operationNo === previous ? "previous" : ""} ${current ? "current" : ""}" data-select-operation="${item.operationNo}">
+        <span class="drive-operation-card-top"><b>運用 ${item.operationNo}</b><em>${status}</em></span>
+        <strong>${escapeHTML(item.first?.plannedDeparture || "未定")} から ${escapeHTML(item.last?.plannedArrival || item.last?.plannedDeparture || "未定")}</strong>
+        <small>${item.runs.length}便　${escapeHTML(item.assigned?.vehicleNo || "車両未定")}　${escapeHTML(item.assigned?.driverName || "担当未定")}</small>
+        ${item.operationNo === previous ? `<i>前回選択</i>` : ""}
+      </button>`;
+    }).join("")}</div>
+  </section>`;
+  updateDriveTick();
+}
+
+function driveRunDeckMarkup(selected) {
+  const runs = driveOperationRuns();
+  const index = Math.max(0, runs.findIndex((run) => run.id === selected.id));
+  return `<section class="drive-run-deck-section" aria-labelledby="driveDeckHeading">
+    <div class="drive-deck-heading"><div><span>これからの運用</span><strong id="driveDeckHeading">運用 ${state.driveOperationNo}　全${runs.length}便</strong></div><span class="drive-deck-position" role="status" aria-atomic="true">${index + 1}便目を表示中</span></div>
+    <div class="drive-run-deck" id="driveRunDeck" tabindex="0" aria-label="運用便一覧。左右に動かして確認">
+      ${runs.map((run, runIndex) => {
+        const [label, statusClass] = statusInfo[run.status] || statusInfo.waiting;
+        const capacity = capacityInfo(run);
+        return `<button type="button" class="drive-run-card ${run.id === selected.id ? "active" : ""} ${runIndex < index ? "past" : ""}" data-drive-run="${escapeHTML(run.id)}" aria-pressed="${run.id === selected.id}">
+          <span><b>${runIndex + 1}</b><em class="${statusClass}">${label}</em></span>
+          <strong>${escapeHTML(run.plannedDeparture || "未定")}</strong>
+          <small>${escapeHTML(run.route)}</small>
+          <i>乗車 ${Number(run.passengerCount || 0)}名 ／ ${capacity.capacity}名</i>
+        </button>`;
+      }).join("")}
+    </div>
+    <div class="drive-deck-controls"><button type="button" data-drive-move="-1" ${index === 0 ? "disabled" : ""}>前の便</button><span>カードを左右に動かすか、前後ボタンで確認</span><button type="button" data-drive-move="1" ${index >= runs.length - 1 ? "disabled" : ""}>次の便</button></div>
   </section>`;
 }
 
 function renderDriveView() {
   if (!state.driveOpen) return;
+  if (state.driveChooserOpen || !state.driveOperationNo) { renderDriveChooser(); return; }
+  $("#driveSettingsButton").disabled = false;
   const run = driveRun();
   if (run) {
     state.driveRunId = run.id;
@@ -332,7 +414,7 @@ function renderDriveView() {
   const countdown = countdownInfo(run);
   const capacity = capacityInfo(run);
   const actionLabel = run.status === "waiting" ? "乗車受付を開始" : run.status === "boarding" ? "出発を記録" : "到着を記録";
-  $("#driveContent").innerHTML = `
+  $("#driveContent").innerHTML = `${driveRunDeckMarkup(run)}
     <section class="drive-primary ${statusClass || run.status}">
       <div class="drive-run-topline"><span class="drive-status ${statusClass}">${statusLabel}</span><span>運用 ${run.operationNo}　便 ${run.columnNo}</span></div>
       <div class="drive-route"><strong>${escapeHTML(run.route)}</strong><span>${escapeHTML(run.vehicleNo || "車両未定")}　${escapeHTML(run.driverName || "担当未定")}</span></div>
@@ -357,6 +439,13 @@ function renderDriveView() {
       ${following ? `<strong>${escapeHTML(following.plannedDeparture || "未定")}　運用 ${following.operationNo}</strong><p>${escapeHTML(following.route)}</p>` : "<strong>本日の最終便</strong><p>後続便はありません</p>"}
     </aside>
     ${routeProgressMarkup(run)}`;
+  requestAnimationFrame(() => {
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    $("#driveRunDeck")?.querySelector(".drive-run-card.active")?.scrollIntoView({ behavior, block: "nearest", inline: "center" });
+    bindDriveSwipe();
+  });
+  const profiles = [routeProfileFor(run, "outbound"), routeProfileFor(run, "inbound")].filter(Boolean);
+  if (profiles.length && window.BusRoutes?.renderDriveMap) requestAnimationFrame(() => window.BusRoutes.renderDriveMap($("#driveRouteMap"), profiles, state.gpsPosition || (run.latitude || run.longitude ? { latitude: run.latitude, longitude: run.longitude } : null)));
   updateDriveTick();
 }
 
@@ -450,11 +539,71 @@ async function setWakeLock(enabled) {
   updateWakeButton();
 }
 
+async function selectDriveOperation(operationNo, runId = null) {
+  const operation = Number(operationNo);
+  const selected = state.runs.find((run) => run.id === runId && run.operationNo === operation) || initialRunForOperation(operation);
+  if (!selected) { toast("対象の運用便がありません", "error"); return; }
+  state.driveOperationNo = operation;
+  state.driveRunId = selected.id;
+  state.driveChooserOpen = false;
+  state.driveSelections[driveSelectionKey()] = operation;
+  storeJSON("busDriveSelections", state.driveSelections);
+  renderDriveView();
+  $("#driveRunDeck")?.focus({ preventScroll: true });
+  await setWakeLock(true);
+  if (state.driveSettings.gpsEnabled) startGPS();
+}
+
+function showDriveOperationChooser() {
+  state.driveChooserOpen = true;
+  stopGPS();
+  renderDriveView();
+  $("[data-select-operation]")?.focus({ preventScroll: true });
+}
+
+function selectDriveRun(runId) {
+  const run = state.runs.find((item) => item.id === runId && item.operationNo === state.driveOperationNo);
+  if (!run) return;
+  state.driveRunId = run.id;
+  renderDriveView();
+}
+
+function moveDriveRun(delta) {
+  const runs = driveOperationRuns();
+  const index = runs.findIndex((run) => run.id === state.driveRunId);
+  const next = runs[Math.max(0, Math.min(runs.length - 1, index + Number(delta)))];
+  if (next && next.id !== state.driveRunId) selectDriveRun(next.id);
+}
+
+function bindDriveSwipe() {
+  const target = $(".drive-primary");
+  const deck = $("#driveRunDeck");
+  deck?.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      moveDriveRun(event.key === "ArrowRight" ? 1 : -1);
+    }
+  });
+  if (!target) return;
+  let start = null;
+  target.addEventListener("pointerdown", (event) => { if (event.target.closest("button,input,a")) return; start = { x: event.clientX, y: event.clientY, id: event.pointerId }; });
+  target.addEventListener("pointerup", (event) => {
+    if (!start || start.id !== event.pointerId) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    start = null;
+    if (Math.abs(dx) >= 60 && Math.abs(dx) > Math.abs(dy) * 1.25) moveDriveRun(dx < 0 ? 1 : -1);
+  });
+  target.addEventListener("pointercancel", () => { start = null; });
+}
+
 async function openDriveView(runId = null) {
   state.lastFocused = document.activeElement;
-  const selected = state.runs.find((item) => item.id === runId) || priorityRun();
+  const selected = state.runs.find((item) => item.id === runId) || null;
+  const previousOperation = Number(state.driveSelections[driveSelectionKey()] || 0);
   state.driveRunId = selected?.id || null;
-  state.driveOperationNo = selected?.operationNo || null;
+  state.driveOperationNo = selected?.operationNo || (driveOperationRuns(previousOperation).length ? previousOperation : null);
+  state.driveChooserOpen = !selected;
   state.driveOpen = true;
   $(".app-shell").inert = true;
   $("#driveView").hidden = false;
@@ -465,8 +614,12 @@ async function openDriveView(runId = null) {
   state.driveTimer = setInterval(updateDriveTick, 1000);
   $("#exitDriveButton").focus();
   try { if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); } catch {}
-  await setWakeLock(true);
-  if (state.driveSettings.gpsEnabled) startGPS();
+  if (selected) {
+    state.driveSelections[driveSelectionKey()] = selected.operationNo;
+    storeJSON("busDriveSelections", state.driveSelections);
+    await setWakeLock(true);
+    if (state.driveSettings.gpsEnabled) startGPS();
+  }
 }
 
 async function closeDriveView() {
@@ -478,7 +631,9 @@ async function closeDriveView() {
   document.body.classList.remove("drive-active");
   state.driveRunId = null;
   state.driveOperationNo = null;
+  state.driveChooserOpen = false;
   stopGPS();
+  window.BusRoutes?.closeDriveMap?.();
   await setWakeLock(false);
   try { if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen(); } catch {}
   state.lastFocused?.focus?.();
@@ -503,6 +658,7 @@ function updateGpsDisplay() {
   $("#driveGpsStatus").textContent = gps.status;
   $("#driveGpsCoordinates").textContent = gps.coordinates;
   $("#driveGpsDetail").textContent = gps.detail;
+  if (state.gpsPosition) window.BusRoutes?.updateDrivePosition?.(state.gpsPosition);
 }
 
 async function sendGpsPosition(position) {
@@ -668,7 +824,7 @@ function renderRuns() {
     const driveButton = !["arrived", "cancelled"].includes(run.status) ? `<button class="drive-row-button" data-drive-id="${escapeHTML(run.id)}" aria-label="この便を集中表示">集中</button>` : "";
     return `<tr class="${runEmphasis(run, delay)}">
       <td><div class="planned-time">${escapeHTML(run.plannedDeparture || "未定")}</div><div class="subtext">到着 ${escapeHTML(run.plannedArrival || "未定")}</div></td>
-      <td class="route-cell"><strong>運用 ${run.operationNo}<span class="subtext">　便 ${run.columnNo}</span></strong><p>${escapeHTML(run.route)}</p>${run.note ? `<p class="note-text">注意 ${escapeHTML(run.note)}</p>` : ""}</td>
+      <td class="route-cell"><strong>運用 ${run.operationNo}<span class="subtext">　便 ${run.columnNo}</span></strong><p>${escapeHTML(run.route)}</p><span class="route-assignment-chip ${routeProfileFor(run, "outbound") ? "" : "unassigned"}">往 ${escapeHTML(routeProfileFor(run, "outbound")?.name || "未割当")}</span><span class="route-assignment-chip ${routeProfileFor(run, "inbound") ? "" : "unassigned"}">復 ${escapeHTML(routeProfileFor(run, "inbound")?.name || "未割当")}</span>${run.note ? `<p class="note-text">注意 ${escapeHTML(run.note)}</p>` : ""}</td>
       <td><strong>${escapeHTML(run.vehicleNo || "車両未定")}</strong><div class="subtext">${escapeHTML(run.driverName || "担当未定")}</div></td>
       <td>${passengerControl(run, true)}<div class="capacity-mini ${capacity.className}">${capacity.capacity}名定員　${escapeHTML(capacity.text)}</div></td>
       <td><div class="actual-line"><span>出発</span><strong>${actualTime(run.actualDeparture)}</strong></div><div class="actual-line"><span>到着</span><strong>${actualTime(run.actualArrival)}</strong></div>${delay !== null && delay !== undefined ? `<div class="delay ${delay >= 5 ? "late" : ""}">${delayText(delay)}</div>` : ""}</td>
@@ -684,7 +840,7 @@ function renderRuns() {
     const driveButton = !["arrived", "cancelled"].includes(run.status) ? `<button class="drive-row-button" data-drive-id="${escapeHTML(run.id)}" aria-label="この便を集中表示">集中</button>` : "";
     return `<article class="run-card ${runEmphasis(run, delay)}">
       <div class="run-card-head"><div><span class="run-label">運用 ${run.operationNo}　便 ${run.columnNo}</span><strong class="mobile-time">${escapeHTML(run.plannedDeparture || "未定")}</strong><span class="subtext">到着 ${escapeHTML(run.plannedArrival || "未定")}</span></div><span class="badge ${statusClass}">${statusLabel}</span></div>
-      <div class="mobile-route"><strong>${escapeHTML(run.route)}</strong><span>${escapeHTML(run.vehicleNo || "車両未定")}　${escapeHTML(run.driverName || "担当未定")}</span></div>
+      <div class="mobile-route"><strong>${escapeHTML(run.route)}</strong><span>${escapeHTML(run.vehicleNo || "車両未定")}　${escapeHTML(run.driverName || "担当未定")}</span><span><span class="route-assignment-chip ${routeProfileFor(run, "outbound") ? "" : "unassigned"}">往 ${escapeHTML(routeProfileFor(run, "outbound")?.name || "未割当")}</span><span class="route-assignment-chip ${routeProfileFor(run, "inbound") ? "" : "unassigned"}">復 ${escapeHTML(routeProfileFor(run, "inbound")?.name || "未割当")}</span></span></div>
       ${run.note ? `<div class="mobile-alert">注意　${escapeHTML(run.note)}</div>` : ""}
       ${delay !== null && delay !== undefined ? `<div class="mobile-delay ${delay >= 5 ? "late" : ""}">${delayText(delay)}</div>` : ""}
       <div class="mobile-facts"><span>出発 <strong>${actualTime(run.actualDeparture)}</strong></span><span>到着 <strong>${actualTime(run.actualArrival)}</strong></span></div>
@@ -719,7 +875,8 @@ function renderAll() {
   renderRuns();
   renderHistory();
   renderDriveView();
-  storeJSON(`busDashboard:${state.date}:${state.day}`, { runs: state.runs, events: state.events, timetableCount: Number.parseInt($("#timetableCount").textContent, 10) || 0 });
+  window.BusRoutes?.update?.({ date: state.date, day: state.day, runs: state.runs, profiles: state.routeProfiles });
+  storeJSON(`busDashboard:${state.date}:${state.day}`, { runs: state.runs, events: state.events, routeProfiles: state.routeProfiles, timetableCount: Number.parseInt($("#timetableCount").textContent, 10) || 0 });
 }
 
 function replaceRun(next) {
@@ -750,6 +907,12 @@ async function runAction(id, action) {
     const current = state.runs.find((run) => run.id === id);
     const occurredAt = new Date().toISOString();
     const result = await mutate(`/api/runs/${encodeURIComponent(id)}/action`, "POST", { action, occurredAt, requestId: requestID() }, "運行操作");
+    if (state.driveOpen && state.driveRunId === id && (action === "arrive" || action === "cancel")) {
+      const runs = driveOperationRuns();
+      const currentIndex = runs.findIndex((run) => run.id === id);
+      const next = runs.slice(currentIndex + 1).find((run) => !["arrived", "cancelled"].includes(run.status));
+      if (next) state.driveRunId = next.id;
+    }
     replaceRun(result.queued ? optimisticAction(current, action, occurredAt) : result.data);
     if (!result.queued) await loadDashboard(true);
     const messages = { boarding: "乗車受付を開始しました", depart: "出発時刻を記録しました", arrive: "到着時刻を記録しました", cancel: "運休を記録しました", reset: "待機へ戻しました" };
@@ -808,6 +971,10 @@ function openDetails(id) {
   $("#passengerCount").value = run.passengerCount || 0;
   $("#vehicleNo").value = run.vehicleNo || "";
   $("#driverName").value = run.driverName || "";
+  $("#runOutboundRouteProfile").innerHTML = `<option value="">未割当</option>${state.routeProfiles.filter((profile) => profile.direction === "outbound").map((profile) => `<option value="${escapeHTML(profile.id)}">${escapeHTML(profile.name)}</option>`).join("")}`;
+  $("#runInboundRouteProfile").innerHTML = `<option value="">未割当</option>${state.routeProfiles.filter((profile) => profile.direction === "inbound").map((profile) => `<option value="${escapeHTML(profile.id)}">${escapeHTML(profile.name)}</option>`).join("")}`;
+  $("#runOutboundRouteProfile").value = run.outboundRouteProfileId || "";
+  $("#runInboundRouteProfile").value = run.inboundRouteProfileId || "";
   $("#note").value = run.note || "";
   $("#cancelRunButton").hidden = run.status === "cancelled";
   $("#resetRunButton").hidden = run.status === "waiting";
@@ -823,6 +990,8 @@ async function saveDetails(event) {
       passengerCount: Number($("#passengerCount").value || 0),
       vehicleNo: $("#vehicleNo").value,
       driverName: $("#driverName").value,
+      outboundRouteProfileId: $("#runOutboundRouteProfile").value,
+      inboundRouteProfileId: $("#runInboundRouteProfile").value,
       note: $("#note").value,
       requestId: requestID(),
       occurredAt: new Date().toISOString(),
@@ -846,9 +1015,10 @@ function switchView(view) {
   });
   $$(".view").forEach((section) => section.classList.remove("active"));
   $(`#${view}View`).classList.add("active");
-  const titles = { operations: ["当日運行", "人数と出発、到着を即時記録"], timetable: ["ダイヤ取込", "現在のExcelを運行便へ変換"], history: ["操作履歴", "出発、到着、変更内容を確認"] };
+  const titles = { operations: ["当日運行", "人数と出発、到着を即時記録"], timetable: ["ダイヤ取込", "現在のExcelを運行便へ変換"], routes: ["経路管理", "道路経路を条件別に登録して便へ割当"], history: ["操作履歴", "出発、到着、変更内容を確認"] };
   $("#pageTitle").textContent = titles[view][0];
   $("#pageSubtitle").textContent = titles[view][1];
+  if (view === "routes") window.BusRoutes?.activate?.();
   $("#sidebar").classList.remove("open");
 }
 
@@ -895,6 +1065,12 @@ document.addEventListener("click", (event) => {
   if (editButton) openDetails(editButton.dataset.edit);
   const driveButton = event.target.closest("[data-drive-id]");
   if (driveButton) openDriveView(driveButton.dataset.driveId);
+  const operationButton = event.target.closest("[data-select-operation]");
+  if (operationButton) selectDriveOperation(operationButton.dataset.selectOperation);
+  const driveRunButton = event.target.closest("[data-drive-run]");
+  if (driveRunButton) selectDriveRun(driveRunButton.dataset.driveRun);
+  const driveMoveButton = event.target.closest("[data-drive-move]");
+  if (driveMoveButton) moveDriveRun(driveMoveButton.dataset.driveMove);
   const actionButton = event.target.closest("[data-action]");
   if (actionButton) requestAction(actionButton.dataset.id, actionButton.dataset.action);
   const countButton = event.target.closest("[data-count-delta]");
@@ -934,6 +1110,7 @@ $("#reloadButton").addEventListener("click", () => loadDashboard());
 $("#openDriveButton").addEventListener("click", () => openDriveView());
 $("#exitDriveButton").addEventListener("click", closeDriveView);
 $("#keepAwakeButton").addEventListener("click", () => setWakeLock(!state.wakeWanted));
+$("#driveOperationButton").addEventListener("click", showDriveOperationChooser);
 $("#driveSettingsButton").addEventListener("click", openDriveSettings);
 $("#driveSettingsForm").addEventListener("submit", saveDriveSettings);
 $("#closeDriveSettings").addEventListener("click", () => $("#driveSettingsDialog").close());
@@ -973,6 +1150,15 @@ document.addEventListener("visibilitychange", () => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && state.driveOpen && !$("#confirmDialog").open && !$("#detailsDialog").open && !$("#driveSettingsDialog").open) closeDriveView();
 });
+
+window.busApp = {
+  api,
+  toast,
+  setBusy,
+  reload: () => loadDashboard(true),
+  snapshot: () => ({ date: state.date, day: state.day, runs: state.runs, profiles: state.routeProfiles }),
+  setProfiles: (profiles) => { state.routeProfiles = profiles || []; renderAll(); },
+};
 
 updateDayToggle();
 loadDashboard().then(syncOfflineQueue);
