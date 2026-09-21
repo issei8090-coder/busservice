@@ -3,17 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b2744">
-  <title>学校バス運行管理</title>
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>JOHOKU SAITAMA BUS</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/app-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/enhancements.css">
   <link rel="stylesheet" href="/routes.css">
   <link rel="stylesheet" href="/mobile-redesign.css">
+  <link rel="stylesheet" href="/ux-polish.css">
+  <link rel="stylesheet" href="/brand-theme.css">
 </head>
 <body>
-  <section class="launch-gate" id="launchGate" role="dialog" aria-modal="true" aria-labelledby="launchHeading">
+  <a class="skip-link" href="#mainContent">メインコンテンツへ移動</a>
+  <section class="login-gate" id="loginGate" role="dialog" aria-modal="true" aria-labelledby="loginHeading">
+    <form class="login-panel" id="loginForm">
+      <img class="login-bus-art" src="/assets/brand/bus-side-line-livery-v2.png" alt="" aria-hidden="true">
+      <span class="launch-kicker">JOHOKU SAITAMA · BUS OPERATIONS</span>
+      <h1 id="loginHeading">運行管理ログイン</h1>
+      <p>職員番号と暗証番号を入力してください。</p>
+      <div class="login-error" id="loginError" role="alert" tabindex="-1" hidden></div>
+      <label><span>職員番号</span><input id="loginStaffId" autocomplete="username" required></label>
+      <label><span>暗証番号</span><input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" minlength="4" required></label>
+      <button class="login-submit" type="submit">ログイン</button>
+      <small>設定されていない場合は管理担当者へ確認してください。</small>
+    </form>
+  </section>
+  <section class="launch-gate" id="launchGate" role="dialog" aria-modal="true" aria-labelledby="launchHeading" hidden>
     <div class="launch-panel">
-      <span class="launch-kicker">本日の運行を開始</span>
+      <img class="launch-bus-art" src="/assets/brand/bus-side-line-livery-v2.png" alt="" aria-hidden="true">
+      <span class="launch-kicker">JOHOKU SAITAMA · TODAY</span>
       <h1 id="launchHeading">開く画面を選択</h1>
       <p id="launchDateLabel">運転担当は運用番号を一度押すだけで開始できます。</p>
       <div class="launch-operation-grid" id="launchOperationGrid" aria-label="担当運用を選択"></div>
@@ -24,18 +45,18 @@
   <div class="app-shell" inert>
     <aside class="sidebar" id="sidebar">
       <div class="brand">
-        <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 16h12M6 8h12M8 20v-2m8 2v-2M5 5h14v13H5zM8 12h2m4 0h2"/></svg></span>
-        <div><strong>学校バス</strong><small>運行管理</small></div>
+        <span class="brand-icon" aria-hidden="true"><img src="/assets/brand/bus-front-line-livery.png" alt=""></span>
+        <div><strong>JOHOKU SAITAMA</strong><small>BUS OPERATIONS</small></div>
         <button class="icon-button sidebar-close" id="closeSidebar" aria-label="一覧を閉じる">×</button>
       </div>
       <nav aria-label="管理項目">
         <button class="nav-button active" data-view="operations" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 16h12M5 5h14v13H5zM8 20v-2m8 2v-2M8 9h8"/></svg>当日運行</button>
-        <button class="nav-button" data-view="timetable"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>元ダイヤ編集</button>
+        <button class="nav-button" data-view="timetable" data-role-required="admin"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>元ダイヤ編集</button>
         <button class="nav-button" data-view="fleet"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 18c3-6 5-9 8-9s4 4 8-3M6 19h.01M18 8h.01"/></svg>全車両位置</button>
-        <button class="nav-button" data-view="routes"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 18c3-6 5-9 8-9s4 4 8-3M4 18h.01M20 6h.01"/></svg>経路管理</button>
+        <button class="nav-button" data-view="routes" data-role-required="admin"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 18c3-6 5-9 8-9s4 4 8-3M4 18h.01M20 6h.01"/></svg>経路管理</button>
         <button class="nav-button" data-view="history"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 7v5l3 2M4 12a8 8 0 1 0 2-5.3L4 9V4h5"/></svg>操作履歴</button>
       </nav>
-      <div class="sidebar-foot"><span class="health-dot"></span><span>Go処理側へ接続中</span></div>
+      <div class="sidebar-foot"><span class="health-dot"></span><span>システム接続中</span></div>
     </aside>
 
     <div class="workspace">
@@ -54,12 +75,15 @@
           </div>
           <span class="day-name" id="sundayLabel">日曜</span>
         </div>
+        <button type="button" class="sync-status-button" id="syncStatusButton" aria-label="同期状況を確認"><span id="syncStatusCount">0</span></button>
+        <div class="user-menu"><span id="currentUserLabel"></span><button type="button" id="logoutButton">終了</button></div>
       </header>
 
-      <main>
+      <main id="mainContent" tabindex="-1">
         <section id="operationsView" class="view active">
           <div class="toolbar card">
             <div class="toolbar-copy"><span class="live-dot"></span><div><h2>当日運行</h2><p>ダイヤを便一覧へ展開し、実績を日付別に保存します。</p></div></div>
+            <img class="operations-bus-art" src="/assets/brand/bus-side-line-livery-v2.png" alt="" aria-hidden="true">
             <div class="toolbar-actions">
               <label class="date-control"><svg viewBox="0 0 24 24"><path d="M6 3v3m12-3v3M4 9h16M5 5h14v15H5z"/></svg><input id="serviceDate" type="date" aria-label="運行日"></label>
               <button class="button secondary" id="reloadButton"><svg viewBox="0 0 24 24"><path d="M20 6v5h-5M4 18v-5h5M6 9a7 7 0 0 1 12-2l2 4M18 15a7 7 0 0 1-12 2l-2-4"/></svg>再読込</button>
@@ -81,10 +105,11 @@
             <div class="filters">
               <div class="filter-tabs" id="statusFilters">
                 <button class="active" data-status="all" aria-pressed="true">すべて <span id="allCount">0</span></button>
-                <button data-status="waiting" aria-pressed="false">待機</button><button data-status="boarding" aria-pressed="false">乗車受付</button><button data-status="departed" aria-pressed="false">運行中</button><button data-status="arrived" aria-pressed="false">到着済</button><button data-status="cancelled" aria-pressed="false">運休</button>
+                <button data-status="waiting" aria-pressed="false">待機 <span id="waitingCount">0</span></button><button data-status="boarding" aria-pressed="false">乗車受付 <span id="boardingCount">0</span></button><button data-status="departed" aria-pressed="false">運行中 <span id="departedCount">0</span></button><button data-status="arrived" aria-pressed="false">到着済 <span id="arrivedCount">0</span></button><button data-status="cancelled" aria-pressed="false">運休 <span id="cancelledCount">0</span></button>
               </div>
-              <label class="search-control"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg><input id="searchInput" type="search" placeholder="運用・経路・車両・担当で検索"></label>
+              <div class="search-control"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg><input id="searchInput" type="search" aria-label="便を検索" placeholder="運用・経路・車両・担当で検索"><button type="button" id="clearSearchButton" aria-label="検索を解除" hidden>×</button></div>
             </div>
+            <div class="results-summary" id="resultsSummary" role="status" aria-live="polite"></div>
             <div id="runsContent" class="runs-content" aria-live="polite"></div>
           </section>
         </section>
@@ -115,6 +140,7 @@
             <div class="timetable-editor-layout">
               <aside><div class="timetable-list-filters"><select id="timetableDayFilter" aria-label="曜日"><option>土曜</option><option>日曜</option></select><select id="timetableOperationFilter" aria-label="運用番号"></select></div><div id="timetableList" class="timetable-list"></div></aside>
               <form id="timetableForm" class="timetable-form">
+                <div class="validation-summary" id="templateValidation" role="alert" tabindex="-1" hidden></div>
                 <div class="form-grid">
                   <label><span>曜日</span><select id="templateDay"><option>土曜</option><option>日曜</option></select></label>
                   <label><span>運用番号</span><input id="templateOperation" type="number" min="1" max="9" required></label>
@@ -137,7 +163,7 @@
         <section id="fleetView" class="view">
           <div class="fleet-layout">
             <section class="card fleet-map-card"><div class="panel-heading"><h2>全車両の現在地</h2><p id="fleetMapStatus" role="status" aria-atomic="true">位置情報を集計しています</p></div><div class="fleet-map-shell"><div id="fleetMap" class="osm-map" tabindex="0" aria-label="全車両の現在地と登録経路"></div><a class="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a></div></section>
-            <aside class="card fleet-side"><div class="panel-heading"><h2>車両状況</h2><p>各運用の最新位置を表示</p></div><div id="fleetVehicleList" class="fleet-vehicle-list"></div><form id="schoolPointForm" class="school-point-form"><h3>学校地点⓪</h3><p>全経路の共通地点です。校内では端末測位をこの地点へ補正します。</p><label><span>緯度</span><input id="schoolLatitude" type="number" step="0.0000001" required></label><label><span>経度</span><input id="schoolLongitude" type="number" step="0.0000001" required></label><label><span>補正半径</span><input id="schoolRadius" type="number" min="5" max="200" value="35" required></label><button type="button" class="button secondary" id="captureSchoolPoint">現在地を取得</button><button type="submit" class="button primary">学校⓪を保存</button><small>端末GPSの実測精度は別表示し、1m未満を保証しません。</small></form></aside>
+            <aside class="card fleet-side"><div class="panel-heading"><h2>車両状況</h2><p>各運用の最新位置を表示</p></div><div id="fleetVehicleList" class="fleet-vehicle-list"></div><form id="schoolPointForm" class="school-point-form" data-role-required="admin"><h3>学校地点⓪</h3><p>全経路の共通地点です。校内では端末測位をこの地点へ補正します。</p><label><span>緯度</span><input id="schoolLatitude" type="number" step="0.0000001" required></label><label><span>経度</span><input id="schoolLongitude" type="number" step="0.0000001" required></label><label><span>補正半径</span><input id="schoolRadius" type="number" min="5" max="200" value="35" required></label><button type="button" class="button secondary" id="captureSchoolPoint">現在地を取得</button><button type="submit" class="button primary">学校⓪を保存</button><small>端末GPSの実測精度は別表示し、1m未満を保証しません。</small></form></aside>
           </div>
         </section>
 
@@ -208,8 +234,8 @@
     <form method="dialog" id="detailsForm">
       <div class="dialog-heading"><div><h2>便情報を入力</h2><p id="dialogRoute"></p></div><button class="icon-button" value="cancel" aria-label="閉じる">×</button></div>
       <div class="form-grid">
-        <label><span>往路の乗車人数</span><input id="outboundPassengerCount" type="number" min="0" max="999" required></label>
-        <label><span>復路の乗車人数</span><input id="inboundPassengerCount" type="number" min="0" max="999" required></label>
+        <label><span>往路の乗車人数</span><input id="outboundPassengerCount" type="number" inputmode="numeric" min="0" max="999" required></label>
+        <label><span>復路の乗車人数</span><input id="inboundPassengerCount" type="number" inputmode="numeric" min="0" max="999" required></label>
         <label><span>車両番号</span><input id="vehicleNo" maxlength="30" placeholder="例 3号車"></label>
         <label><span>担当者</span><input id="driverName" maxlength="60"></label>
         <label><span>往路経路</span><select id="runOutboundRouteProfile"><option value="">未割当</option></select></label>
@@ -245,6 +271,14 @@
       <button class="button secondary drive-audio-test" type="button" id="testDriveAudio">音声を試す</button>
       <p class="settings-security-note">GPSと画面消灯防止はHTTPS接続またはlocalhostで利用できます。</p>
       <div class="dialog-actions"><button class="button secondary" type="button" id="cancelDriveSettings">戻る</button><button class="button primary" type="submit">同じ運用へ固定</button></div>
+    </form>
+  </dialog>
+  <dialog id="syncDialog" class="sync-dialog">
+    <form method="dialog">
+      <div class="dialog-heading"><div><h2>通信と同期</h2><p>未送信操作と競合を確認します。</p></div><button class="icon-button" value="cancel" aria-label="閉じる">×</button></div>
+      <div class="sync-summary" id="syncSummary"></div>
+      <div class="sync-items" id="syncItems"></div>
+      <div class="dialog-actions"><button class="button secondary" value="cancel">閉じる</button><button type="button" class="button primary" id="retrySyncButton">再同期</button></div>
     </form>
   </dialog>
   <div id="toastRegion" class="toast-region" aria-live="polite"></div>

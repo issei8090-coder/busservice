@@ -157,6 +157,13 @@
       });
       if (this.position) {
         const screen = toScreen(this.position);
+        const metersPerPixel = 156543.03392 * Math.cos(Number(this.position.latitude) * Math.PI / 180) / (2 ** this.zoom);
+        const accuracyRadius = clamp(Number(this.position.accuracy || 0) / Math.max(.01, metersPerPixel), 0, 160);
+        if (accuracyRadius > 2) {
+          const accuracy = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          accuracy.setAttribute("cx", screen.x); accuracy.setAttribute("cy", screen.y); accuracy.setAttribute("r", accuracyRadius); accuracy.setAttribute("class", "osm-accuracy-circle");
+          this.overlay.append(accuracy);
+        }
         const marker = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         marker.setAttribute("cx", screen.x); marker.setAttribute("cy", screen.y); marker.setAttribute("r", 9); marker.setAttribute("class", "osm-current-position");
         this.overlay.append(marker);
@@ -180,7 +187,8 @@
       positionGroups.forEach((items) => {
         const screen = toScreen(items[0]);
         const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        group.setAttribute("class", `osm-fleet-marker ${items.length > 1 ? "cluster" : ""}`);
+        const freshness = items.some((item) => item.freshness === "stale") ? "stale" : items.some((item) => item.freshness === "delayed") ? "delayed" : "fresh";
+        group.setAttribute("class", `osm-fleet-marker ${items.length > 1 ? "cluster" : ""} ${freshness}`);
         const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         circle.setAttribute("cx", screen.x); circle.setAttribute("cy", screen.y); circle.setAttribute("r", items.length > 1 ? 17 : 13);
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");

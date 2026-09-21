@@ -1,0 +1,11 @@
+{
+  "name": "学校バス運行管理",
+  "short_name": "バス運行",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#102b43",
+  "theme_color": "#102b43",
+  "icons": [
+    {"src": "/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}

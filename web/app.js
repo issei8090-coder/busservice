@@ -2,6 +2,7 @@ const initialServiceDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/To
 const initialWeekday = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", weekday: "short" }).format(new Date());
 
 const state = {
+	user: null,
   date: initialServiceDate,
   day: initialWeekday.includes("日") ? "日曜" : "土曜",
   runs: [],
@@ -13,6 +14,7 @@ const state = {
   query: "",
   editing: null,
   editingTemplateKey: null,
+	templateWarningSignature: "",
   confirming: null,
   busy: false,
   countTimers: new Map(),
@@ -30,6 +32,7 @@ const state = {
   driveSelections: readStoredJSON("busDriveSelections", {}),
   driveSettings: readStoredJSON("busDriveSettings", { vehicleNo: "", driverName: "", capacity: 55, audioEnabled: true, gpsEnabled: false }),
   offlineQueue: readStoredJSON("busOfflineQueue", []),
+	offlineConflicts: readStoredJSON("busOfflineConflicts", []),
   syncingOffline: false,
   notifiedDepartures: new Set(readStoredJSON("busDepartureNotified", [])),
   gpsWatchId: null,
@@ -37,7 +40,10 @@ const state = {
   gpsError: "GPS停止中",
   lastGpsSentAt: 0,
   lastGpsCoords: null,
+	lastRawGps: null,
+	gpsSpeed: 0,
   lastSyncAttempt: 0,
+	passengerUndo: null,
 };
 
 const statusInfo = {
@@ -83,12 +89,58 @@ function loaderMarkup(label = "読み込んでいます", compact = false) {
   return `<div class="loader-wrap ${compact ? "compact" : ""}" role="status"><svg class="pl" viewBox="0 0 240 240" aria-hidden="true"><circle class="pl__ring pl__ring--a" cx="120" cy="120" r="105" fill="none" stroke-width="20" stroke-dasharray="0 660" stroke-dashoffset="-330"/><circle class="pl__ring pl__ring--b" cx="120" cy="120" r="35" fill="none" stroke-width="20" stroke-dasharray="0 220" stroke-dashoffset="-110"/><circle class="pl__ring pl__ring--c" cx="85" cy="120" r="70" fill="none" stroke-width="20" stroke-dasharray="0 440"/><circle class="pl__ring pl__ring--d" cx="155" cy="120" r="70" fill="none" stroke-width="20" stroke-dasharray="0 440"/></svg><strong>${escapeHTML(label)}</strong></div>`;
 }
 
-function toast(message, type = "success") {
+function toast(message, type = "success", action = null) {
   const item = document.createElement("div");
   item.className = `toast ${type === "error" ? "error" : ""}`;
-  item.textContent = message;
+	const label = document.createElement("span");
+	label.textContent = message;
+	item.append(label);
+	if (action) {
+		const button = document.createElement("button");
+		button.type = "button";
+		button.textContent = action.label;
+		button.addEventListener("click", () => { action.run(); item.remove(); });
+		item.append(button);
+	}
   $("#toastRegion").append(item);
-  setTimeout(() => item.remove(), 3800);
+	setTimeout(() => item.remove(), action ? 5200 : 3800);
+}
+
+function showLogin(message = "") {
+	if (state.driveOpen) {
+		state.driveOpen = false;
+		clearInterval(state.driveTimer);
+		state.driveTimer = null;
+		$("#driveView").hidden = true;
+		document.body.classList.remove("drive-active");
+		stopGPS();
+		window.BusRoutes?.closeDriveMap?.();
+	}
+	state.user = null;
+	document.body.dataset.role = "";
+	$("#loginGate").hidden = false;
+	$("#launchGate").hidden = true;
+	$(".app-shell").inert = true;
+	const error = $("#loginError");
+	error.hidden = !message;
+	error.textContent = message;
+	if (message) error.focus(); else $("#loginStaffId").focus();
+}
+
+function applyUser(user) {
+	state.user = user;
+	document.body.dataset.role = user.role;
+	const roleLabel = ({ admin:"管理者", driver:"運転担当", viewer:"閲覧担当" })[user.role] || user.role;
+	const userLabel = user.name || user.id;
+	$("#currentUserLabel").textContent = userLabel === roleLabel ? userLabel : `${userLabel}　${roleLabel}`;
+	$$('[data-role-required="admin"]').forEach((element) => { element.hidden = user.role !== "admin"; });
+	const visibleNav = $$(".nav-button").filter((element) => !element.hidden).length;
+	$("#sidebar nav").style.setProperty("--nav-count", visibleNav);
+	$("#launchOperationGrid").hidden = user.role === "viewer";
+	$("#launchAdmin").textContent = user.role === "viewer" ? "運行状況を開く" : "管理画面を開く";
+	$("#openDriveButton").hidden = user.role === "viewer";
+	$("#loginGate").hidden = true;
+	$("#launchGate").hidden = false;
 }
 
 async function api(url, options = {}) {
@@ -96,7 +148,7 @@ async function api(url, options = {}) {
   try {
     response = await fetch(url, options);
     state.serverReachable = true;
-    if (state.offlineQueue.length && !state.syncingOffline) setTimeout(syncOfflineQueue, 0);
+    if (state.user && state.offlineQueue.length && !state.syncingOffline) setTimeout(syncOfflineQueue, 0);
   } catch (error) {
     state.serverReachable = false;
     error.networkFailure = true;
@@ -109,17 +161,24 @@ async function api(url, options = {}) {
   if (!response.ok) {
     const error = new Error(body.error || "処理に失敗しました");
     error.status = response.status;
+		error.body = body;
+		if (response.status === 401 && url !== "/api/login") showLogin("ログインの有効時間が切れました。再度ログインしてください。");
     throw error;
   }
   return body;
 }
 
 function enqueueMutation(url, method, body, label) {
-  const item = { id: body.requestId || requestID(), url, method, body, label, queuedAt: new Date().toISOString() };
+  const item = { id: body.requestId || requestID(), ownerId: state.user?.id || "", url, method, body, label, queuedAt: new Date().toISOString() };
   item.body.requestId = item.id;
   const replaceLatest = label === "乗車人数" || label === "GPS位置" || label === "運用設定";
   const existingIndex = replaceLatest ? state.offlineQueue.findIndex((queued) => queued.method === method && queued.url === url && queued.label === label) : -1;
-  if (existingIndex >= 0) state.offlineQueue.splice(existingIndex, 1, item);
+	if (existingIndex >= 0) {
+		const previous = state.offlineQueue[existingIndex];
+		if (previous.body.expectedRevision !== undefined) item.body.expectedRevision = previous.body.expectedRevision;
+		if (previous.body.expectedRevisions) item.body.expectedRevisions = previous.body.expectedRevisions;
+		state.offlineQueue.splice(existingIndex, 1, item);
+	}
   else state.offlineQueue.push(item);
   storeJSON("busOfflineQueue", state.offlineQueue);
   updateConnectionStatus();
@@ -132,8 +191,8 @@ async function mutate(url, method, body, label) {
     return { data, queued: false };
   } catch (error) {
     if (!error.networkFailure && navigator.onLine) throw error;
-    enqueueMutation(url, method, body, label);
-    return { data: null, queued: true };
+    const queuedItem = enqueueMutation(url, method, body, label);
+    return { data: null, queued: true, queuedItem };
   }
 }
 
@@ -144,6 +203,7 @@ async function syncOfflineQueue() {
   try {
     while (state.offlineQueue.length && navigator.onLine) {
       const item = state.offlineQueue[0];
+	  if (item.ownerId && item.ownerId !== state.user?.id) break;
       try {
         await api(item.url, { method: item.method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(item.body) });
         state.offlineQueue.shift();
@@ -151,6 +211,8 @@ async function syncOfflineQueue() {
       } catch (error) {
         if (error.networkFailure || !navigator.onLine || (error.status || 500) >= 500) break;
         state.offlineQueue.shift();
+		state.offlineConflicts.push({ ...item, reason:error.message, current:error.body?.current || null, failedAt:new Date().toISOString() });
+		storeJSON("busOfflineConflicts", state.offlineConflicts);
         rejected += 1;
         storeJSON("busOfflineQueue", state.offlineQueue);
       }
@@ -161,9 +223,22 @@ async function syncOfflineQueue() {
     }
     if (rejected) toast(`${rejected}件の保留操作を確認できませんでした`, "error");
   } finally {
-    state.syncingOffline = false;
-    updateConnectionStatus();
+	state.syncingOffline = false;
+	updateConnectionStatus();
+	renderSyncCenter();
   }
+}
+
+function renderSyncCenter() {
+	if (!$("#syncItems")) return;
+	const pending = state.offlineQueue.length;
+	const conflicts = state.offlineConflicts.length;
+	$("#syncStatusCount").textContent = pending + conflicts;
+	$("#syncStatusButton").classList.toggle("has-items", pending + conflicts > 0);
+	$("#syncSummary").innerHTML = `<strong>${pending}件が未送信</strong><span>${conflicts}件が要確認</span>`;
+	const pendingMarkup = state.offlineQueue.map((item) => `<article><strong>${escapeHTML(item.label)}</strong><span>${item.ownerId && item.ownerId !== state.user?.id ? "別の職員が保存した操作です" : `${actualTime(item.queuedAt)}から未送信`}</span></article>`).join("");
+	const conflictMarkup = state.offlineConflicts.map((item, index) => `<article class="conflict"><strong>${escapeHTML(item.label)}　確認が必要</strong><span>${escapeHTML(item.reason || "別端末で更新されています")}</span><div><button type="button" data-conflict-retry="${index}">現在の内容で再試行</button><button type="button" data-conflict-discard="${index}">破棄</button></div></article>`).join("");
+	$("#syncItems").innerHTML = pendingMarkup + conflictMarkup || `<div class="empty">未送信の操作はありません</div>`;
 }
 
 function setBusy(value) {
@@ -232,14 +307,43 @@ function visibleRuns() {
     if (state.status !== "all" && run.status !== state.status) return false;
     const target = `${run.operationNo} ${run.route} ${run.vehicleNo} ${run.driverName}`.toLowerCase();
     return !query || target.includes(query);
-  });
+  }).sort(compareRunsByTime);
 }
 
 function priorityRun() {
-  return state.runs.find((run) => run.status === "departed")
-    || state.runs.find((run) => run.status === "boarding")
-    || state.runs.find((run) => run.status === "waiting")
-    || null;
+  const byStatus = (status) => state.runs.filter((run) => run.status === status).sort(compareRunsByTime);
+  const active = byStatus("departed")[0] || byStatus("boarding")[0];
+  if (active) return active;
+  const waiting = byStatus("waiting");
+  if (!waiting.length) return null;
+  if (state.date !== initialServiceDate) return waiting[0];
+  const japanTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+  const nowMinutes = timeToMinutes(japanTime);
+  return waiting.reduce((closest, run) => {
+    const distance = Math.abs(timeToMinutes(run.plannedDeparture) - nowMinutes);
+    const closestDistance = Math.abs(timeToMinutes(closest.plannedDeparture) - nowMinutes);
+    return distance < closestDistance ? run : closest;
+  }, waiting[0]);
+}
+
+function timeToMinutes(value) {
+  const match = String(value || "").match(/^(\d{1,2}):(\d{2})$/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : Number.MAX_SAFE_INTEGER;
+}
+
+function compareRunsByTime(left, right) {
+  return timeToMinutes(left.plannedDeparture) - timeToMinutes(right.plannedDeparture)
+    || Number(left.operationNo || 0) - Number(right.operationNo || 0)
+    || Number(left.columnNo || 0) - Number(right.columnNo || 0);
+}
+
+function priorityTiming(run) {
+  if (state.date !== initialServiceDate || !run?.plannedDeparture || run.status === "departed") return "";
+  const target = plannedDate(run.plannedDeparture);
+  if (!target) return "";
+  const minutes = Math.round((target.getTime() - Date.now()) / 60000);
+  if (Math.abs(minutes) < 1) return "出発時刻です";
+  return minutes > 0 ? `出発まで ${minutes}分` : `予定から ${Math.abs(minutes)}分経過`;
 }
 
 function plannedDate(time) {
@@ -395,11 +499,13 @@ function gpsDisplay(run) {
   const accuracy = position?.accuracy ?? run?.locationAccuracy;
   if (!latitude && !longitude) return { status: state.gpsError, coordinates: "位置情報なし", detail: "GPSを有効にすると現在地を保存します" };
   const capturedAt = position?.capturedAt || run?.locationUpdatedAt;
-  const quality = Number(accuracy) <= 1 ? "目標精度内" : Number(accuracy) <= 5 ? "高精度" : Number(accuracy) <= 15 ? "通常精度" : "精度低下";
+	const ageSeconds = capturedAt ? Math.max(0, Math.floor((Date.now() - new Date(capturedAt).getTime()) / 1000)) : Infinity;
+	const freshness = ageSeconds > 60 ? "位置が古い" : ageSeconds > 30 ? "更新遅延" : "更新中";
+  const quality = Number(accuracy) <= 5 ? "高精度" : Number(accuracy) <= 20 ? "通常精度" : "低精度";
   return {
-    status: position?.zone === "school" || run?.locationZone === "school" ? "学校⓪へ位置補正" : state.gpsError || "GPS取得中",
+		status: ageSeconds > 60 ? "位置が古い" : position?.zone === "school" || run?.locationZone === "school" ? "学校⓪へ位置補正" : state.gpsError || "GPS取得中",
     coordinates: `${Number(latitude).toFixed(5)}, ${Number(longitude).toFixed(5)}`,
-    detail: `端末測位 約${Math.round(Number(accuracy || 0))}m　${quality}${capturedAt ? `　${actualTime(capturedAt)}更新` : ""}`,
+		detail: `端末測位 約${Math.round(Number(accuracy || 0))}m　${quality}　${freshness}${capturedAt ? `　${actualTime(capturedAt)}更新` : ""}`,
   };
 }
 
@@ -508,11 +614,14 @@ function renderDriveView() {
       ${next ? `<button type="button" class="drive-main-action ${next.className}" data-action="${next.action}" data-id="${escapeHTML(run.id)}" data-leg="${leg.leg}"><span>${next.label}</span>${icon("arrow")}</button>` : `<div class="drive-action-complete">${leg.label}の操作は完了しています</div>`}
       <p>時刻記録を伴う操作は、対象便を確認してから確定します。</p>
     </section>
-    <aside class="drive-next-run">
-      <span>同じ運用の次便</span>
-      ${following ? `<strong>${escapeHTML(following.plannedDeparture || "未定")}　運用 ${following.operationNo}</strong><p>${escapeHTML(following.route)}</p>` : "<strong>本日の最終便</strong><p>後続便はありません</p>"}
-    </aside>
-    ${routeProgressMarkup(run)}`;
+    <details class="drive-more">
+      <summary>経路、GPS、次便を確認</summary>
+      <aside class="drive-next-run">
+        <span>同じ運用の次便</span>
+        ${following ? `<strong>${escapeHTML(following.plannedDeparture || "未定")}　運用 ${following.operationNo}</strong><p>${escapeHTML(following.route)}</p>` : "<strong>本日の最終便</strong><p>後続便はありません</p>"}
+      </aside>
+      ${routeProgressMarkup(run)}
+    </details>`;
   requestAnimationFrame(() => {
     const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
     $("#driveRunDeck")?.querySelector(".drive-run-card.active")?.scrollIntoView({ behavior, block: "nearest", inline: "center" });
@@ -581,6 +690,7 @@ function updateConnectionStatus() {
   $("#driveConnection").classList.toggle("offline", !online);
   $("#driveConnection").classList.toggle("pending", queueCount > 0);
   $("#driveConnection").querySelector("span").textContent = label;
+  renderSyncCenter();
 }
 
 function updateWakeButton() {
@@ -675,6 +785,7 @@ function bindDriveSwipe() {
 }
 
 async function openDriveView(runId = null) {
+  if (state.user?.role === "viewer") { toast("閲覧担当は集中表示を操作できません", "error"); return; }
   state.lastFocused = document.activeElement;
   const selected = state.runs.find((item) => item.id === runId) || null;
   const previousOperation = Number(state.driveSelections[driveSelectionKey()] || 0);
@@ -773,12 +884,24 @@ function startGPS() {
       latitude: result.coords.latitude,
       longitude: result.coords.longitude,
       accuracy: result.coords.accuracy,
+		speed: Math.max(0, Number(result.coords.speed || 0)),
       capturedAt: new Date(result.timestamp).toISOString(),
     };
+		if (state.lastRawGps) {
+			const seconds = Math.max(1, (new Date(raw.capturedAt) - new Date(state.lastRawGps.capturedAt)) / 1000);
+			const jump = distanceMeters(state.lastRawGps, raw);
+			if (seconds <= 15 && jump > Math.max(300, seconds * 45) && raw.accuracy > 20) {
+				state.gpsError = "不自然な測位を除外";
+				updateGpsDisplay();
+				return;
+			}
+		}
+		state.lastRawGps = raw;
+		state.gpsSpeed = raw.speed;
     const school = state.settings.schoolLatitude || state.settings.schoolLongitude ? { latitude: state.settings.schoolLatitude, longitude: state.settings.schoolLongitude } : null;
     const schoolDistance = school ? distanceMeters(raw, school) : Infinity;
-    const schoolThreshold = Math.max(Number(state.settings.schoolRadius || 35), Math.min(80, Number(raw.accuracy || 0) * 1.5));
-    const next = school && schoolDistance <= schoolThreshold ? { ...raw, ...school, zone: "school", rawDistance: schoolDistance } : { ...raw, zone: "road" };
+		const schoolThreshold = Math.max(Number(state.settings.schoolRadius || 35), Math.min(45, Number(raw.accuracy || 0) * 1.2));
+		const next = school && raw.accuracy <= 20 && schoolDistance <= schoolThreshold ? { ...raw, ...school, zone: "school", rawLatitude:raw.latitude, rawLongitude:raw.longitude, rawDistance:schoolDistance } : { ...raw, zone: "road" };
     state.gpsPosition = next;
     state.gpsError = next.zone === "school" ? "学校⓪へ位置補正" : "GPS取得済";
     updateGpsDisplay();
@@ -813,9 +936,9 @@ async function updateRouteProgress(id, delta, leg = state.driveLeg) {
   if (leg === "inbound") run.inboundProgressIndex = nextIndex; else run.outboundProgressIndex = nextIndex;
   renderAll();
   try {
-    const result = await mutate(`/api/runs/${encodeURIComponent(id)}`, "PATCH", { progressIndex: nextIndex, leg, occurredAt: new Date().toISOString(), requestId: requestID() }, "経路進捗");
+    const result = await mutate(`/api/runs/${encodeURIComponent(id)}`, "PATCH", { progressIndex: nextIndex, leg, expectedRevision: run.revision, occurredAt: new Date().toISOString(), requestId: requestID() }, "経路進捗");
     if (!result.queued) replaceRun(result.data);
-    else toast("経路進捗を一時保存しました");
+    else { run.revision = Number(result.queuedItem?.body?.expectedRevision ?? run.revision) + 1; toast("経路進捗を一時保存しました"); }
   } catch (error) { toast(error.message, "error"); }
 }
 
@@ -847,10 +970,14 @@ async function saveDriveSettings(event) {
   setBusy(true);
   try {
     const url = `/api/operations/${run.operationNo}/assignment?date=${encodeURIComponent(state.date)}&day=${encodeURIComponent(state.day)}`;
-    const result = await mutate(url, "PATCH", { ...settings, requestId: requestID() }, "運用設定");
+    const expectedRevisions = Object.fromEntries(state.runs.filter((item) => item.operationNo === run.operationNo && !["arrived", "cancelled"].includes(item.status)).map((item) => [item.id, item.revision]));
+    const result = await mutate(url, "PATCH", { ...settings, expectedRevisions, requestId: requestID() }, "運用設定");
     if (result.queued) {
       state.runs.forEach((item) => {
-        if (item.operationNo === run.operationNo && !["arrived", "cancelled"].includes(item.status)) Object.assign(item, settings);
+        if (item.operationNo === run.operationNo && !["arrived", "cancelled"].includes(item.status)) {
+          Object.assign(item, settings);
+          item.revision = Number(expectedRevisions[item.id] || item.revision || 1) + 1;
+        }
       });
     } else {
       const replacements = new Map((result.data.runs || []).map((item) => [item.id, item]));
@@ -870,10 +997,11 @@ function renderPriority() {
     $("#priorityStrip").innerHTML = '<div class="priority-complete"><strong>本日の運行は完了しています</strong><span>到着済みの便と操作履歴を確認できます。</span></div>';
     return;
   }
-  const mode = run.status === "departed" ? "運行中" : run.status === "boarding" ? "乗車受付中" : "次の便";
+  const mode = run.status === "departed" ? "運行中" : run.status === "boarding" ? "乗車受付中" : "次の確認便";
   const action = nextLegAction(run);
+  const timing = priorityTiming(run);
   $("#priorityStrip").className = `priority-strip ${run.status}`;
-  $("#priorityStrip").innerHTML = `<div class="priority-label"><span>${mode}</span><strong>${escapeHTML(run.plannedDeparture || "時刻未定")}</strong></div><div class="priority-route"><strong>運用 ${run.operationNo}　${escapeHTML(run.route)}</strong><span>${escapeHTML(run.vehicleNo || "車両未定")}　${escapeHTML(run.driverName || "担当未定")}　往 ${run.outboundPassengerCount || 0}名　復 ${run.inboundPassengerCount || 0}名</span></div>${action ? `<button class="priority-action ${action.className}" data-action="${action.action}" data-leg="${action.leg}" data-id="${escapeHTML(run.id)}">${action.label}${icon("arrow")}</button>` : ""}`;
+  $("#priorityStrip").innerHTML = `<div class="priority-label"><span>${mode}</span><strong>${escapeHTML(run.plannedDeparture || "時刻未定")}</strong>${timing ? `<small>${escapeHTML(timing)}</small>` : ""}</div><div class="priority-route"><strong>運用 ${run.operationNo}　${escapeHTML(run.route)}</strong><span>${escapeHTML(run.vehicleNo || "車両未定")}　${escapeHTML(run.driverName || "担当未定")}　往 ${run.outboundPassengerCount || 0}名　復 ${run.inboundPassengerCount || 0}名</span></div>${action ? `<button class="priority-action ${action.className}" data-action="${action.action}" data-leg="${action.leg}" data-id="${escapeHTML(run.id)}">${action.label}${icon("arrow")}</button>` : ""}`;
 }
 
 function passengerControl(run, compact = false, leg = "outbound") {
@@ -901,11 +1029,43 @@ function runEmphasis(run, delay) {
   return "";
 }
 
+function clearRunFilters() {
+  state.status = "all";
+  state.query = "";
+  $("#searchInput").value = "";
+  $$("[data-status]").forEach((button) => {
+    const active = button.dataset.status === "all";
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  renderRuns();
+  $("#searchInput").focus();
+}
+
+function clearRunSearch() {
+  state.query = "";
+  $("#searchInput").value = "";
+  renderRuns();
+  $("#searchInput").focus();
+}
+
 function renderRuns() {
   const runs = visibleRuns();
+  const statusCounts = state.runs.reduce((counts, run) => {
+    counts[run.status] = (counts[run.status] || 0) + 1;
+    return counts;
+  }, {});
+  ["waiting", "boarding", "departed", "arrived", "cancelled"].forEach((status) => {
+    const element = $(`#${status}Count`);
+    if (element) element.textContent = statusCounts[status] || 0;
+  });
+  const hasFilter = state.status !== "all" || Boolean(state.query.trim());
+  $("#clearSearchButton").hidden = !state.query;
+  $("#resultsSummary").innerHTML = `<strong>${runs.length}便を表示</strong><span> ／ 全${state.runs.length}便</span>${hasFilter ? '<button type="button" data-clear-filters>絞り込みを解除</button>' : '<span>　時刻順に確認できます</span>'}`;
   if (!runs.length) {
     const reason = state.runs.length ? "絞り込み条件に合う便がありません" : "ダイヤ取込からExcelを登録してください";
-    $("#runsContent").innerHTML = `<div class="empty"><div>${icon("bus")}<strong>${reason}</strong></div></div>`;
+    const reset = state.runs.length ? '<button type="button" class="button secondary" data-clear-filters>絞り込みを解除</button>' : '';
+    $("#runsContent").innerHTML = `<div class="empty"><div>${icon("bus")}<strong>${reason}</strong><p>${state.runs.length ? "検索語や状態を変更して、もう一度お試しください。" : "元ダイヤを登録すると、ここに本日の便が表示されます。"}</p>${reset}</div></div>`;
     return;
   }
   const rows = runs.map((run) => {
@@ -979,6 +1139,45 @@ function timeInputValue(value) {
   return parts.length === 2 ? `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}` : "";
 }
 
+function clockValue(value) {
+	const match = String(value || "").match(/^(\d{2}):(\d{2})$/);
+	return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+function validateTemplatePayload(payload) {
+	const errors = [], warnings = [];
+	const cycleStart = clockValue(payload.plannedDeparture), cycleEnd = clockValue(payload.plannedArrival);
+	const outboundStart = clockValue(payload.outboundDeparture), outboundEnd = clockValue(payload.outboundArrival);
+	const inboundStart = clockValue(payload.inboundDeparture), inboundEnd = clockValue(payload.inboundArrival);
+	if (cycleStart === null || cycleEnd === null) errors.push("一周の出発と帰着を入力してください");
+	else if (cycleEnd <= cycleStart) errors.push("一周の帰着は出発より後にしてください");
+	if (payload.outboundType !== "none" && outboundStart === null) errors.push("往路の出発時刻を入力してください");
+	if (payload.inboundType !== "none" && inboundEnd === null) errors.push("復路の到着時刻を入力してください");
+	if (outboundStart !== null && outboundEnd !== null && outboundEnd <= outboundStart) errors.push("往路到着は往路出発より後にしてください");
+	if (inboundStart !== null && inboundEnd !== null && inboundEnd <= inboundStart) errors.push("復路到着は復路出発より後にしてください");
+	if (outboundEnd !== null && inboundStart !== null && inboundStart < outboundEnd) errors.push("復路出発は往路到着以降にしてください");
+	if (payload.outboundType !== "none" && outboundEnd === null) warnings.push("往路到着が未入力です");
+	if (payload.inboundType !== "none" && inboundStart === null) warnings.push("復路出発が未入力です");
+	if (payload.outboundType === "none" && (outboundStart !== null || outboundEnd !== null)) warnings.push("往路は運行なしですが時刻が入っています");
+	if (payload.inboundType === "none" && (inboundStart !== null || inboundEnd !== null)) warnings.push("復路は運行なしですが時刻が入っています");
+	const overlaps = state.timetable.filter((item) => item.day === payload.day && item.operationNo === payload.operationNo && item.columnNo !== payload.columnNo).filter((item) => {
+		const start = clockValue(timeInputValue(item.plannedDeparture)), end = clockValue(timeInputValue(item.plannedArrival));
+		return cycleStart !== null && cycleEnd !== null && start !== null && end !== null && cycleStart < end && cycleEnd > start;
+	});
+	if (overlaps.length) errors.push(`便${overlaps.map((item) => item.columnNo).join("、")}と時間が重複しています`);
+	const hasRouteProfile = state.routeProfiles.some((profile) => payload.route.includes(profile.line));
+	if (!hasRouteProfile) warnings.push("該当路線の登録経路がありません");
+	return { errors, warnings };
+}
+
+function showTemplateValidation(report) {
+	const element = $("#templateValidation");
+	const items = [...report.errors.map((text) => `<li class="error">${escapeHTML(text)}</li>`), ...report.warnings.map((text) => `<li>${escapeHTML(text)}</li>`)].join("");
+	element.hidden = !items;
+	element.innerHTML = items ? `<strong>${report.errors.length ? "保存できない項目があります" : "確認が必要な項目があります"}</strong><ul>${items}</ul>${!report.errors.length ? "<small>内容が正しければ、もう一度保存を押してください。</small>" : ""}` : "";
+	if (items) element.focus();
+}
+
 function renderTimetableEditor() {
   const day = $("#timetableDayFilter")?.value || state.day;
   const operation = Number($("#timetableOperationFilter")?.value || 1);
@@ -1024,6 +1223,15 @@ async function saveTemplate(event) {
     inboundDeparture: $("#templateInboundDeparture").value, inboundArrival: $("#templateInboundArrival").value,
     details: $("#templateDetails").value.trim(),
   };
+	const report = validateTemplatePayload(payload);
+	const signature = JSON.stringify(payload);
+	if (report.errors.length || (report.warnings.length && state.templateWarningSignature !== signature)) {
+		state.templateWarningSignature = report.errors.length ? "" : signature;
+		showTemplateValidation(report);
+		return;
+	}
+	showTemplateValidation({ errors:[], warnings:[] });
+	state.templateWarningSignature = "";
   setBusy(true);
   try {
     const saved = await api("/api/timetable", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -1040,8 +1248,9 @@ function fleetVehicles() {
   return driveOperations().map((operation) => {
     const positioned = operation.runs.filter((run) => run.locationUpdatedAt && (run.latitude || run.longitude)).sort((a, b) => new Date(b.locationUpdatedAt) - new Date(a.locationUpdatedAt))[0];
     const current = operation.runs.find((run) => ["boarding", "departed"].includes(run.status)) || initialRunForOperation(operation.operationNo);
-    const position = positioned ? { latitude: positioned.latitude, longitude: positioned.longitude, accuracy: positioned.locationAccuracy, label: "運用" + operation.operationNo, zone: positioned.locationZone } : null;
-    return { operationNo: operation.operationNo, run: current, position, updatedAt: positioned?.locationUpdatedAt };
+    const ageSeconds = positioned ? Math.max(0, Math.floor((Date.now() - new Date(positioned.locationUpdatedAt).getTime()) / 1000)) : Infinity;
+		const position = positioned ? { latitude: positioned.latitude, longitude: positioned.longitude, accuracy: positioned.locationAccuracy, label: "運用" + operation.operationNo, zone: positioned.locationZone, freshness:ageSeconds > 60 ? "stale" : ageSeconds > 30 ? "delayed" : "fresh" } : null;
+		return { operationNo: operation.operationNo, run: current, position, updatedAt: positioned?.locationUpdatedAt, ageSeconds };
   });
 }
 
@@ -1049,8 +1258,9 @@ function renderFleet() {
   if (!$("#fleetVehicleList")) return;
   const vehicles = fleetVehicles();
   $("#fleetVehicleList").innerHTML = vehicles.map((item) => {
-    const location = item.position ? (item.position.zone === "school" ? "学校⓪" : "道路上") + "　精度約" + Math.round(item.position.accuracy || 0) + "m　" + actualTime(item.updatedAt) : "位置情報なし";
-    return "<article class=\"" + (item.position ? "" : "no-position") + "\"><strong>運用 " + item.operationNo + "</strong><span>" + escapeHTML(item.run?.vehicleNo || "車両未定") + "　" + escapeHTML(item.run?.driverName || "担当未定") + "</span><small>" + location + "</small></article>";
+    const freshness = item.ageSeconds > 60 ? "位置が古い" : item.ageSeconds > 30 ? "更新遅延" : "更新中";
+		const location = item.position ? (item.position.zone === "school" ? "学校⓪" : "道路上") + "　精度約" + Math.round(item.position.accuracy || 0) + "m　" + freshness + "　" + actualTime(item.updatedAt) : "位置情報なし";
+		return "<article class=\"" + (!item.position ? "no-position" : item.ageSeconds > 60 ? "stale-position" : item.ageSeconds > 30 ? "delayed-position" : "") + "\"><strong>運用 " + item.operationNo + "</strong><span>" + escapeHTML(item.run?.vehicleNo || "車両未定") + "　" + escapeHTML(item.run?.driverName || "担当未定") + "</span><small>" + location + "</small></article>";
   }).join("");
   $("#fleetMapStatus").textContent = vehicles.filter((item) => item.position).length + "台の最新位置を表示";
   if (!$("#schoolPointForm").contains(document.activeElement)) {
@@ -1110,7 +1320,7 @@ function replaceRun(next) {
 }
 
 function optimisticAction(run, action, occurredAt, leg = "") {
-  const next = { ...run, updatedAt: occurredAt };
+  const next = { ...run, revision: Number(run.revision || 1) + 1, updatedAt: occurredAt };
   if (leg) {
     const prefix = leg === "inbound" ? "inbound" : "outbound";
     if (action === "boarding") next[`${prefix}Status`] = "boarding";
@@ -1147,7 +1357,7 @@ async function runAction(id, action, leg = "") {
   try {
     const current = state.runs.find((run) => run.id === id);
     const occurredAt = new Date().toISOString();
-    const result = await mutate(`/api/runs/${encodeURIComponent(id)}/action`, "POST", { action, leg, occurredAt, requestId: requestID() }, "運行操作");
+    const result = await mutate(`/api/runs/${encodeURIComponent(id)}/action`, "POST", { action, leg, expectedRevision: current?.revision, occurredAt, requestId: requestID() }, "運行操作");
     if (state.driveOpen && state.driveRunId === id && (action === "arrive" || action === "cancel")) {
       const current = state.runs.find((run) => run.id === id);
       if (leg === "outbound" && current && legData(current, "inbound").type !== "none") state.driveLeg = "inbound";
@@ -1169,6 +1379,11 @@ async function runAction(id, action, leg = "") {
 function requestAction(id, action, leg = "") {
   const run = state.runs.find((item) => item.id === id);
   if (!run) return;
+	if (state.gpsPosition && state.gpsSpeed > 2.8 && Number(state.gpsPosition.accuracy || 999) <= 30) {
+		toast("走行中の可能性があります。停車後に操作してください", "error");
+		speakJapanese("走行中の操作はできません。停車後に操作してください。", true);
+		return;
+	}
   if (action === "boarding") { runAction(id, action, leg); return; }
   const legLabel = leg === "inbound" ? "復路" : leg === "outbound" ? "往路" : "便";
   const labels = { depart: ["出発を記録しますか？", "出発"], arrive: ["到着を記録しますか？", "到着"], cancel: ["この便を運休にしますか？", "運休"] };
@@ -1183,7 +1398,7 @@ function requestAction(id, action, leg = "") {
   $("#confirmDialog").showModal();
 }
 
-function queuePassenger(id, value, leg = "") {
+function queuePassenger(id, value, leg = "", offerUndo = false) {
   const run = state.runs.find((item) => item.id === id);
   if (!run) return;
   const previousValue = leg ? legData(run, leg).passengers : Number(run.passengerCount || 0);
@@ -1191,6 +1406,9 @@ function queuePassenger(id, value, leg = "") {
   run.passengerCount = nextValue;
   if (leg === "outbound") run.outboundPassengerCount = nextValue;
   if (leg === "inbound") run.inboundPassengerCount = nextValue;
+	if (offerUndo && nextValue !== previousValue) {
+		toast(`${nextValue - previousValue > 0 ? "+" : ""}${nextValue - previousValue}名を反映しました`, "success", { label:"取り消す", run:() => queuePassenger(id, previousValue, leg, false) });
+	}
   const capacity = Number(run.capacity || state.driveSettings.capacity || 55);
   if (previousValue < capacity && nextValue === capacity) {
     toast(`運用${run.operationNo}は定員${capacity}名に達しました`, "error");
@@ -1205,9 +1423,11 @@ function queuePassenger(id, value, leg = "") {
   clearTimeout(state.countTimers.get(timerKey));
   state.countTimers.set(timerKey, setTimeout(async () => {
     try {
-      const result = await mutate(`/api/runs/${encodeURIComponent(id)}`, "PATCH", { passengerCount: nextValue, leg, occurredAt: new Date().toISOString(), requestId: requestID() }, "乗車人数");
+      const expectedRevision = run.revision;
+      const result = await mutate(`/api/runs/${encodeURIComponent(id)}`, "PATCH", { passengerCount: nextValue, leg, expectedRevision, occurredAt: new Date().toISOString(), requestId: requestID() }, "乗車人数");
       if (!result.queued) replaceRun(result.data);
-      toast(result.queued ? `乗車人数${nextValue}名を一時保存しました` : `乗車人数を${nextValue}名で保存しました`);
+      else run.revision = Number(result.queuedItem?.body?.expectedRevision ?? expectedRevision) + 1;
+      if (!offerUndo) toast(result.queued ? `乗車人数${nextValue}名を一時保存しました` : `乗車人数を${nextValue}名で保存しました`);
     } catch (error) { toast(error.message, "error"); await loadDashboard(true); }
     finally { state.countTimers.delete(timerKey); }
   }, 550));
@@ -1227,8 +1447,8 @@ function openDetails(id) {
   $("#runOutboundRouteProfile").value = run.outboundRouteProfileId || "";
   $("#runInboundRouteProfile").value = run.inboundRouteProfileId || "";
   $("#note").value = run.note || "";
-  $("#cancelRunButton").hidden = run.status === "cancelled";
-  $("#resetRunButton").hidden = run.status === "waiting";
+  $("#cancelRunButton").hidden = state.user?.role !== "admin" || run.status === "cancelled";
+  $("#resetRunButton").hidden = state.user?.role !== "admin" || run.status === "waiting";
   $("#detailsDialog").showModal();
 }
 
@@ -1245,12 +1465,13 @@ async function saveDetails(event) {
       outboundRouteProfileId: $("#runOutboundRouteProfile").value,
       inboundRouteProfileId: $("#runInboundRouteProfile").value,
       note: $("#note").value,
+		expectedRevision: state.editing.revision,
       requestId: requestID(),
       occurredAt: new Date().toISOString(),
     };
     const result = await mutate(`/api/runs/${encodeURIComponent(state.editing.id)}`, "PATCH", payload, "便情報");
     if (!result.queued) replaceRun(result.data);
-    else replaceRun({ ...state.editing, ...payload });
+    else replaceRun({ ...state.editing, ...payload, revision: Number(state.editing.revision || 0) + 1 });
     $("#detailsDialog").close();
     if (!result.queued) await loadDashboard(true);
     toast(result.queued ? "便情報を一時保存しました" : "便情報を保存しました");
@@ -1259,6 +1480,8 @@ async function saveDetails(event) {
 }
 
 function switchView(view) {
+	const destination = $(`#${view}View`);
+	if (!destination || (["timetable", "routes"].includes(view) && state.user?.role !== "admin")) { toast("この画面を開く権限がありません", "error"); return; }
   clearInterval(state.fleetTimer);
   state.fleetTimer = null;
   $$(".nav-button").forEach((button) => {
@@ -1268,7 +1491,7 @@ function switchView(view) {
     else button.removeAttribute("aria-current");
   });
   $$(".view").forEach((section) => section.classList.remove("active"));
-  $(`#${view}View`).classList.add("active");
+  destination.classList.add("active");
   const titles = { operations: ["当日運行", "人数と出発、到着を即時記録"], timetable: ["元ダイヤ編集", "往路、復路、便種別を編集"], fleet: ["全車両位置", "最新GPSと学校地点⓪を確認"], routes: ["経路管理", "道路経路を条件別に登録して便へ割当"], history: ["操作履歴", "出発、到着、変更内容を確認"] };
   $("#pageTitle").textContent = titles[view][0];
   $("#pageSubtitle").textContent = titles[view][1];
@@ -1279,6 +1502,77 @@ function switchView(view) {
   }
   if (view === "timetable" && !state.editingTemplateKey) editTemplate(state.timetable.find((item) => item.day === state.day && item.operationNo === 1) || null);
   $("#sidebar").classList.remove("open");
+}
+
+async function login(event) {
+	event.preventDefault();
+	const error = $("#loginError");
+	error.hidden = true;
+	const button = $("#loginForm button[type=submit]");
+	button.disabled = true;
+	button.textContent = "確認中";
+	try {
+		const result = await api("/api/login", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ id:$("#loginStaffId").value.trim(), pin:$("#loginPin").value }) });
+		$("#loginPin").value = "";
+		applyUser(result.user);
+		await startAfterLogin();
+	} catch (loginError) {
+		error.textContent = loginError.message;
+		error.hidden = false;
+		error.focus();
+	} finally {
+		button.disabled = false;
+		button.textContent = "ログイン";
+	}
+}
+
+async function logout() {
+	try { await api("/api/logout", { method:"POST" }); } catch {}
+	if (state.driveOpen) await closeDriveView();
+	showLogin();
+}
+
+async function startAfterLogin() {
+	await loadDashboard();
+	const previous = Number(state.driveSelections[driveSelectionKey()] || 0);
+	const target = state.user?.role === "viewer" ? $("#launchAdmin") : $(`[data-launch-operation="${previous}"]:not(:disabled)`) || $("[data-launch-operation]:not(:disabled)") || $("#launchAdmin");
+	target?.focus();
+	renderSyncCenter();
+	syncOfflineQueue();
+}
+
+async function initializeApp() {
+	if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+	try {
+		const session = await api("/api/session");
+		applyUser(session.user);
+		await startAfterLogin();
+	} catch (error) {
+		if (error.status !== 401) showLogin(error.message);
+		else showLogin();
+	}
+}
+
+function retryConflict(index) {
+	const item = state.offlineConflicts[index];
+	if (!item) return;
+	item.id = requestID();
+	item.body.requestId = item.id;
+	item.queuedAt = new Date().toISOString();
+	if (item.current?.revision && item.body.expectedRevision !== undefined) item.body.expectedRevision = item.current.revision;
+	if (item.current?.revision && item.body.expectedRevisions) item.body.expectedRevisions[item.current.id] = item.current.revision;
+	state.offlineQueue.push(item);
+	state.offlineConflicts.splice(index, 1);
+	storeJSON("busOfflineQueue", state.offlineQueue);
+	storeJSON("busOfflineConflicts", state.offlineConflicts);
+	renderSyncCenter();
+	syncOfflineQueue();
+}
+
+function discardConflict(index) {
+	state.offlineConflicts.splice(index, 1);
+	storeJSON("busOfflineConflicts", state.offlineConflicts);
+	renderSyncCenter();
 }
 
 function updateDayToggle() {
@@ -1308,6 +1602,12 @@ async function importExcel() {
 }
 
 document.addEventListener("click", (event) => {
+	const clearFiltersButton = event.target.closest("[data-clear-filters]");
+	if (clearFiltersButton) { clearRunFilters(); return; }
+	const retryConflictButton = event.target.closest("[data-conflict-retry]");
+	if (retryConflictButton) { retryConflict(Number(retryConflictButton.dataset.conflictRetry)); return; }
+	const discardConflictButton = event.target.closest("[data-conflict-discard]");
+	if (discardConflictButton) { discardConflict(Number(discardConflictButton.dataset.conflictDiscard)); return; }
   const launchOperation = event.target.closest("[data-launch-operation]");
   if (launchOperation) {
     const run = initialRunForOperation(Number(launchOperation.dataset.launchOperation));
@@ -1352,7 +1652,7 @@ document.addEventListener("click", (event) => {
       const inDriveView = Boolean(countButton.closest("#driveView"));
       const leg = countButton.dataset.leg || "";
       const currentCount = leg ? legData(run, leg).passengers : Number(run.passengerCount || 0);
-      queuePassenger(run.id, currentCount + Number(delta), leg);
+      queuePassenger(run.id, currentCount + Number(delta), leg, Math.abs(Number(delta)) >= 10);
       const scope = inDriveView ? $("#driveView") : document;
       [...scope.querySelectorAll("[data-count-delta]")].find((button) => button.dataset.id === run.id && button.dataset.countDelta === delta)?.focus({ preventScroll: true });
     }
@@ -1380,6 +1680,10 @@ $("#serviceDate").value = state.date;
 $("#timetableOperationFilter").innerHTML = Array.from({ length: 9 }, (_, index) => `<option value="${index + 1}">運用 ${index + 1}</option>`).join("");
 $("#timetableDayFilter").value = state.day;
 $("#launchAdmin").addEventListener("click", () => { $("#launchGate").hidden = true; $(".app-shell").inert = false; $("#openSidebar").focus(); });
+$("#loginForm").addEventListener("submit", login);
+$("#logoutButton").addEventListener("click", logout);
+$("#syncStatusButton").addEventListener("click", () => { renderSyncCenter(); $("#syncDialog").showModal(); });
+$("#retrySyncButton").addEventListener("click", syncOfflineQueue);
 $("#timetableDayFilter").addEventListener("change", () => { state.editingTemplateKey = null; renderTimetableEditor(); editTemplate(null); });
 $("#timetableOperationFilter").addEventListener("change", () => { state.editingTemplateKey = null; renderTimetableEditor(); editTemplate(null); });
 $("#timetableForm").addEventListener("submit", saveTemplate);
@@ -1388,6 +1692,7 @@ $("#schoolPointForm").addEventListener("submit", saveSchoolPoint);
 $("#captureSchoolPoint").addEventListener("click", captureSchoolPoint);
 $("#serviceDate").addEventListener("change", (event) => { state.date = event.target.value; loadDashboard(); });
 $("#searchInput").addEventListener("input", (event) => { state.query = event.target.value; renderRuns(); });
+$("#clearSearchButton").addEventListener("click", clearRunSearch);
 $("#reloadButton").addEventListener("click", () => loadDashboard());
 $("#openDriveButton").addEventListener("click", () => openDriveView());
 $("#exitDriveButton").addEventListener("click", closeDriveView);
@@ -1444,9 +1749,4 @@ window.busApp = {
 };
 
 updateDayToggle();
-loadDashboard().then(() => {
-  const previous = Number(state.driveSelections[driveSelectionKey()] || 0);
-  const target = $(`[data-launch-operation="${previous}"]:not(:disabled)`) || $("[data-launch-operation]:not(:disabled)") || $("#launchAdmin");
-  target.focus();
-  syncOfflineQueue();
-});
+initializeApp();
