@@ -2,15 +2,26 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b2744">
   <title>学校バス運行管理</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/enhancements.css">
   <link rel="stylesheet" href="/routes.css">
+  <link rel="stylesheet" href="/mobile-redesign.css">
 </head>
 <body>
-  <div class="app-shell">
+  <section class="launch-gate" id="launchGate" role="dialog" aria-modal="true" aria-labelledby="launchHeading">
+    <div class="launch-panel">
+      <span class="launch-kicker">本日の運行を開始</span>
+      <h1 id="launchHeading">開く画面を選択</h1>
+      <p id="launchDateLabel">運転担当は運用番号を一度押すだけで開始できます。</p>
+      <div class="launch-operation-grid" id="launchOperationGrid" aria-label="担当運用を選択"></div>
+      <button type="button" class="launch-admin" id="launchAdmin">管理画面を開く</button>
+      <small>運用番号は1から9です。運行がない番号は選択できません。</small>
+    </div>
+  </section>
+  <div class="app-shell" inert>
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 16h12M6 8h12M8 20v-2m8 2v-2M5 5h14v13H5zM8 12h2m4 0h2"/></svg></span>
@@ -18,10 +29,11 @@
         <button class="icon-button sidebar-close" id="closeSidebar" aria-label="一覧を閉じる">×</button>
       </div>
       <nav aria-label="管理項目">
-        <button class="nav-button active" data-view="operations" aria-current="page"><span class="dot"></span>当日運行</button>
-        <button class="nav-button" data-view="timetable"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>ダイヤ取込</button>
-        <button class="nav-button" data-view="routes"><svg viewBox="0 0 24 24"><path d="M4 18c3-6 5-9 8-9s4 4 8-3M4 18h.01M20 6h.01"/></svg>経路管理</button>
-        <button class="nav-button" data-view="history"><svg viewBox="0 0 24 24"><path d="M12 7v5l3 2M4 12a8 8 0 1 0 2-5.3L4 9V4h5"/></svg>操作履歴</button>
+        <button class="nav-button active" data-view="operations" aria-current="page"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 16h12M5 5h14v13H5zM8 20v-2m8 2v-2M8 9h8"/></svg>当日運行</button>
+        <button class="nav-button" data-view="timetable"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>元ダイヤ編集</button>
+        <button class="nav-button" data-view="fleet"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 18c3-6 5-9 8-9s4 4 8-3M6 19h.01M18 8h.01"/></svg>全車両位置</button>
+        <button class="nav-button" data-view="routes"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 18c3-6 5-9 8-9s4 4 8-3M4 18h.01M20 6h.01"/></svg>経路管理</button>
+        <button class="nav-button" data-view="history"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 7v5l3 2M4 12a8 8 0 1 0 2-5.3L4 9V4h5"/></svg>操作履歴</button>
       </nav>
       <div class="sidebar-foot"><span class="health-dot"></span><span>Go処理側へ接続中</span></div>
     </aside>
@@ -98,6 +110,35 @@
               <div class="system-count"><span>登録済みダイヤ</span><strong id="timetableCount">0便</strong></div>
             </article>
           </div>
+          <section class="card timetable-editor" aria-labelledby="timetableEditorHeading">
+            <div class="panel-heading"><h2 id="timetableEditorHeading">元ダイヤと便種別を編集</h2><p>往路と復路を別々に設定し、回送、団体専用、運行なしを登録します。</p></div>
+            <div class="timetable-editor-layout">
+              <aside><div class="timetable-list-filters"><select id="timetableDayFilter" aria-label="曜日"><option>土曜</option><option>日曜</option></select><select id="timetableOperationFilter" aria-label="運用番号"></select></div><div id="timetableList" class="timetable-list"></div></aside>
+              <form id="timetableForm" class="timetable-form">
+                <div class="form-grid">
+                  <label><span>曜日</span><select id="templateDay"><option>土曜</option><option>日曜</option></select></label>
+                  <label><span>運用番号</span><input id="templateOperation" type="number" min="1" max="9" required></label>
+                  <label><span>便番号</span><input id="templateColumn" type="number" min="1" max="99" required></label>
+                  <label><span>一周の出発</span><input id="templateDeparture" type="time"></label>
+                  <label><span>一周の帰着</span><input id="templateArrival" type="time"></label>
+                  <label class="full"><span>全体経路</span><input id="templateRoute" maxlength="200" placeholder="学校 → ふじみ野 → 学校" required></label>
+                </div>
+                <div class="leg-edit-grid">
+                  <fieldset><legend>往路</legend><label><span>便種別</span><select id="templateOutboundType"><option value="passenger">通常便</option><option value="deadhead">回送</option><option value="group">団体専用</option><option value="none">運行なし</option></select></label><label><span>出発</span><input id="templateOutboundDeparture" type="time"></label><label><span>到着</span><input id="templateOutboundArrival" type="time"></label></fieldset>
+                  <fieldset><legend>復路</legend><label><span>便種別</span><select id="templateInboundType"><option value="passenger">通常便</option><option value="deadhead">回送</option><option value="group">団体専用</option><option value="none">運行なし</option></select></label><label><span>出発</span><input id="templateInboundDeparture" type="time"></label><label><span>到着</span><input id="templateInboundArrival" type="time"></label></fieldset>
+                </div>
+                <label class="template-details"><span>詳細情報</span><textarea id="templateDetails" maxlength="500" rows="3" placeholder="団体名、回送理由、乗車条件、注意事項など"></textarea></label>
+                <div class="dialog-actions"><button type="button" class="button secondary" id="newTemplateButton">新しい便</button><button type="submit" class="button primary">元ダイヤを保存</button></div>
+              </form>
+            </div>
+          </section>
+        </section>
+
+        <section id="fleetView" class="view">
+          <div class="fleet-layout">
+            <section class="card fleet-map-card"><div class="panel-heading"><h2>全車両の現在地</h2><p id="fleetMapStatus" role="status" aria-atomic="true">位置情報を集計しています</p></div><div class="fleet-map-shell"><div id="fleetMap" class="osm-map" tabindex="0" aria-label="全車両の現在地と登録経路"></div><a class="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a></div></section>
+            <aside class="card fleet-side"><div class="panel-heading"><h2>車両状況</h2><p>各運用の最新位置を表示</p></div><div id="fleetVehicleList" class="fleet-vehicle-list"></div><form id="schoolPointForm" class="school-point-form"><h3>学校地点⓪</h3><p>全経路の共通地点です。校内では端末測位をこの地点へ補正します。</p><label><span>緯度</span><input id="schoolLatitude" type="number" step="0.0000001" required></label><label><span>経度</span><input id="schoolLongitude" type="number" step="0.0000001" required></label><label><span>補正半径</span><input id="schoolRadius" type="number" min="5" max="200" value="35" required></label><button type="button" class="button secondary" id="captureSchoolPoint">現在地を取得</button><button type="submit" class="button primary">学校⓪を保存</button><small>端末GPSの実測精度は別表示し、1m未満を保証しません。</small></form></aside>
+          </div>
         </section>
 
         <section id="historyView" class="view">
@@ -127,7 +168,7 @@
                   <label><span>車両条件</span><input id="routeVehicleNo" maxlength="30" placeholder="空欄なら全車両"></label>
                   <label><span>線の色</span><input id="routeColor" type="color" value="#1e60aa"></label>
                 </div>
-                <p class="route-condition-note">時刻と車両を空欄にすると、その路線と方向の基本経路になります。条件が細かい経路を優先して割り当てます。</p>
+                <p class="route-condition-note">時刻と車両を空欄にすると、その路線と方向の基本経路になります。学校地点⓪を登録すると、往路の始点と復路の終点は全経路で同じ地点へ統一されます。</p>
                 <div class="route-map-heading"><div><strong>道路経路</strong><span id="routeMapInstruction">地図を押して地点を順に追加。鍵盤操作は矢印で移動し、Enterで中心地点を追加</span></div><div class="route-map-summary"><span id="routeDistance">距離 未計算</span><span id="routeDuration">所要 未計算</span></div></div>
                 <div class="route-map-shell">
                   <div id="routeMap" class="osm-map" tabindex="0" aria-label="経路編集地図" aria-describedby="routeMapInstruction"></div>
@@ -167,7 +208,8 @@
     <form method="dialog" id="detailsForm">
       <div class="dialog-heading"><div><h2>便情報を入力</h2><p id="dialogRoute"></p></div><button class="icon-button" value="cancel" aria-label="閉じる">×</button></div>
       <div class="form-grid">
-        <label><span>乗車人数</span><input id="passengerCount" type="number" min="0" max="999" required></label>
+        <label><span>往路の乗車人数</span><input id="outboundPassengerCount" type="number" min="0" max="999" required></label>
+        <label><span>復路の乗車人数</span><input id="inboundPassengerCount" type="number" min="0" max="999" required></label>
         <label><span>車両番号</span><input id="vehicleNo" maxlength="30" placeholder="例 3号車"></label>
         <label><span>担当者</span><input id="driverName" maxlength="60"></label>
         <label><span>往路経路</span><select id="runOutboundRouteProfile"><option value="">未割当</option></select></label>

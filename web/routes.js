@@ -26,10 +26,13 @@
       this.center = { ...DEFAULT_CENTER };
       this.zoom = 13;
       this.waypoints = [];
+      this.waypointLabels = [];
       this.geometry = [];
       this.routes = [];
       this.color = "#1e60aa";
       this.position = null;
+      this.positions = [];
+      this.school = null;
       this.drag = null;
       this.tiles = document.createElement("div");
       this.tiles.className = "osm-tile-layer";
@@ -46,12 +49,15 @@
       this.observer.observe(element);
       this.render();
     }
-    setData({ waypoints = [], geometry = [], routes = [], color = "#1e60aa", position = null }) {
+    setData({ waypoints = [], waypointLabels = [], geometry = [], routes = [], color = "#1e60aa", position = null, positions = [], school = null }) {
       this.waypoints = waypoints;
+      this.waypointLabels = waypointLabels;
       this.geometry = geometry;
       this.routes = routes;
       this.color = color;
       this.position = position;
+      this.positions = positions;
+      this.school = school;
       this.render();
     }
     destroy() { this.observer?.disconnect(); }
@@ -146,7 +152,7 @@
         const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         circle.setAttribute("cx", screen.x); circle.setAttribute("cy", screen.y); circle.setAttribute("r", 12);
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        text.setAttribute("x", screen.x); text.setAttribute("y", screen.y + 4); text.textContent = String(index + 1);
+        text.setAttribute("x", screen.x); text.setAttribute("y", screen.y + 4); text.textContent = this.waypointLabels[index] || String(index + 1);
         group.append(circle, text); this.overlay.append(group);
       });
       if (this.position) {
@@ -155,11 +161,39 @@
         marker.setAttribute("cx", screen.x); marker.setAttribute("cy", screen.y); marker.setAttribute("r", 9); marker.setAttribute("class", "osm-current-position");
         this.overlay.append(marker);
       }
+      if (this.school) {
+        const screen = toScreen(this.school);
+        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        group.setAttribute("class", "osm-school-marker");
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", screen.x); circle.setAttribute("cy", screen.y); circle.setAttribute("r", 15);
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", screen.x); text.setAttribute("y", screen.y - 22); text.textContent = "⓪ 学校";
+        group.append(circle, text); this.overlay.append(group);
+      }
+      const positionGroups = new Map();
+      this.positions.forEach((position) => {
+        const key = `${Number(position.latitude).toFixed(5)}|${Number(position.longitude).toFixed(5)}`;
+        if (!positionGroups.has(key)) positionGroups.set(key, []);
+        positionGroups.get(key).push(position);
+      });
+      positionGroups.forEach((items) => {
+        const screen = toScreen(items[0]);
+        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        group.setAttribute("class", `osm-fleet-marker ${items.length > 1 ? "cluster" : ""}`);
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", screen.x); circle.setAttribute("cy", screen.y); circle.setAttribute("r", items.length > 1 ? 17 : 13);
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", screen.x); text.setAttribute("y", screen.y + 4); text.textContent = items.length > 1 ? `${items.length}台` : String(items[0].label || "車").replace("運用", "");
+        const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        title.textContent = items.map((item) => item.label || "車両").join("、");
+        group.append(title, circle, text); this.overlay.append(group);
+      });
     }
   }
 
   const manager = {
-    profiles: [], runs: [], date: "", day: "", currentId: "", waypoints: [], geometry: [], distance: 0, duration: 0, map: null, dirty: false,
+    profiles: [], runs: [], date: "", day: "", settings: {}, currentId: "", waypoints: [], geometry: [], distance: 0, duration: 0, map: null, dirty: false,
     init() {
       if (!byId("routeMap")) return;
       this.map = new OSMMap(byId("routeMap"), (point) => { this.waypoints.push(point); this.geometry = []; this.distance = 0; this.duration = 0; this.setDirty(); this.draw(); });
@@ -175,11 +209,11 @@
       byId("cancelRouteEdit").addEventListener("click", () => this.currentId ? this.edit(this.currentId) : this.reset());
       byId("autoAssignRoutes").addEventListener("click", () => this.autoAssign());
       byId("routeProfileList").addEventListener("click", (event) => { const button = event.target.closest("[data-route-profile]"); if (button) this.edit(button.dataset.routeProfile); });
-      byId("routeProfileForm").addEventListener("input", (event) => { if (event.target.id === "routeColor") this.draw(); this.setDirty(); });
+      byId("routeProfileForm").addEventListener("input", (event) => { if (event.target.id === "routeColor" || event.target.id === "routeDirection") this.draw(); this.setDirty(); });
       this.update(window.busApp?.snapshot?.() || {});
       this.reset();
     },
-    update(data = {}) { this.profiles = data.profiles || this.profiles; this.runs = data.runs || this.runs; this.date = data.date || this.date; this.day = data.day || this.day; this.renderList(); },
+    update(data = {}) { this.profiles = data.profiles || this.profiles; this.runs = data.runs || this.runs; this.date = data.date || this.date; this.day = data.day || this.day; this.settings = data.settings || this.settings; this.renderList(); },
     activate() { setTimeout(() => { this.map?.render(); if (!this.currentId && this.profiles.length) this.edit(this.profiles[0].id); }, 0); },
     setDirty(value = true) { this.dirty = value; byId("routeSaveState").textContent = value ? "未保存" : "保存済"; byId("routeSaveState").classList.toggle("saved", !value); },
     reset() {
@@ -194,7 +228,9 @@
       byId("routeEditorTitle").textContent = profile.name; byId("deleteRouteProfile").hidden = false; this.setDirty(false); this.draw(); this.map.fit(this.geometry.length ? this.geometry : this.waypoints); this.renderList();
     },
     draw() {
-      this.map?.setData({ waypoints: this.waypoints, geometry: this.geometry, color: byId("routeColor")?.value || "#1e60aa" });
+      const direction = byId("routeDirection")?.value || "outbound";
+      const labels = this.waypoints.map((_, index) => direction === "outbound" && index === 0 || direction === "inbound" && index === this.waypoints.length - 1 ? "⓪" : String(index + 1));
+      this.map?.setData({ waypoints: this.waypoints, waypointLabels: labels, geometry: this.geometry, color: byId("routeColor")?.value || "#1e60aa" });
       byId("routePointCount").textContent = `地点 ${this.waypoints.length}件`;
       byId("routeDistance").textContent = this.distance ? `距離 ${Math.round(this.distance / 100) / 10}km` : "距離 未計算";
       byId("routeDuration").textContent = this.duration ? `所要 約${Math.round(this.duration / 60)}分` : "所要 未計算";
@@ -247,12 +283,22 @@
 
   let driveMap = null;
   let driveRoutes = [];
+  let fleetMap = null;
+  let fleetFitted = false;
   window.BusRoutes = {
     update: (data) => manager.update(data),
     activate: () => manager.activate(),
     renderDriveMap(element, profiles, position) { if (!element) return; driveMap?.destroy(); const list = Array.isArray(profiles) ? profiles : [profiles]; driveRoutes = list.map((profile) => ({ geometry: profile.geometry || [], color: profile.color || "#36f9c7" })); const points = driveRoutes.flatMap((route) => route.geometry); driveMap = new OSMMap(element); driveMap.setData({ routes: driveRoutes, position }); driveMap.fit([...points, ...(position ? [position] : [])]); },
     updateDrivePosition(position) { if (driveMap) driveMap.setData({ routes: driveRoutes, position }); },
     closeDriveMap() { driveMap?.destroy(); driveMap = null; driveRoutes = []; },
+    renderFleetMap(element, profiles, positions, school) {
+      if (!element) return;
+      if (!fleetMap || fleetMap.element !== element) { fleetMap?.destroy(); fleetMap = new OSMMap(element); fleetFitted = false; }
+      const routes = (profiles || []).map((profile) => ({ geometry: profile.geometry || [], color: profile.color || "#1e60aa" }));
+      fleetMap.setData({ routes, positions: positions || [], school });
+      const points = routes.flatMap((route) => route.geometry).concat(positions || []).concat(school ? [school] : []);
+      if (points.length && !fleetFitted) { fleetMap.fit(points); fleetFitted = true; }
+    },
   };
   document.addEventListener("DOMContentLoaded", () => manager.init());
 })();

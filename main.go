@@ -37,6 +37,13 @@ type Template struct {
 	PlannedDeparture string `json:"plannedDeparture"`
 	PlannedArrival   string `json:"plannedArrival"`
 	Route            string `json:"route"`
+	OutboundType      string `json:"outboundType"`
+	InboundType       string `json:"inboundType"`
+	OutboundDeparture string `json:"outboundDeparture"`
+	OutboundArrival   string `json:"outboundArrival"`
+	InboundDeparture  string `json:"inboundDeparture"`
+	InboundArrival    string `json:"inboundArrival"`
+	Details           string `json:"details"`
 }
 
 type Run struct {
@@ -59,13 +66,37 @@ type Run struct {
 	Note                  string `json:"note"`
 	Capacity              int     `json:"capacity"`
 	ProgressIndex         int     `json:"progressIndex"`
+	OutboundProgressIndex int     `json:"outboundProgressIndex"`
+	InboundProgressIndex  int     `json:"inboundProgressIndex"`
 	Latitude              float64 `json:"latitude"`
 	Longitude             float64 `json:"longitude"`
 	LocationAccuracy      float64 `json:"locationAccuracy"`
 	LocationUpdatedAt     string  `json:"locationUpdatedAt"`
 	OutboundRouteProfileID string `json:"outboundRouteProfileId"`
 	InboundRouteProfileID  string `json:"inboundRouteProfileId"`
+	OutboundType           string `json:"outboundType"`
+	InboundType            string `json:"inboundType"`
+	OutboundStatus         string `json:"outboundStatus"`
+	InboundStatus          string `json:"inboundStatus"`
+	OutboundPassengerCount int    `json:"outboundPassengerCount"`
+	InboundPassengerCount  int    `json:"inboundPassengerCount"`
+	OutboundDeparture      string `json:"outboundDeparture"`
+	OutboundArrival        string `json:"outboundArrival"`
+	InboundDeparture       string `json:"inboundDeparture"`
+	InboundArrival         string `json:"inboundArrival"`
+	OutboundActualDeparture string `json:"outboundActualDeparture"`
+	OutboundActualArrival   string `json:"outboundActualArrival"`
+	InboundActualDeparture  string `json:"inboundActualDeparture"`
+	InboundActualArrival    string `json:"inboundActualArrival"`
+	ServiceDetails          string `json:"serviceDetails"`
+	LocationZone            string `json:"locationZone"`
 	UpdatedAt             string `json:"updatedAt"`
+}
+
+type AppSettings struct {
+	SchoolLatitude  float64 `json:"schoolLatitude"`
+	SchoolLongitude float64 `json:"schoolLongitude"`
+	SchoolRadius    float64 `json:"schoolRadius"`
 }
 
 type GeoPoint struct {
@@ -104,6 +135,7 @@ type State struct {
 	Events            []Event           `json:"events"`
 	ProcessedRequests map[string]string `json:"processedRequests,omitempty"`
 	RouteProfiles     map[string]*RouteProfile `json:"routeProfiles"`
+	Settings          AppSettings              `json:"settings"`
 }
 
 type Store struct {
@@ -113,7 +145,7 @@ type Store struct {
 }
 
 func NewStore(filePath string) (*Store, error) {
-	s := &Store{filePath: filePath, state: State{Version: 3, Runs: map[string]*Run{}, ProcessedRequests: map[string]string{}, RouteProfiles: map[string]*RouteProfile{}}}
+	s := &Store{filePath: filePath, state: State{Version: 4, Runs: map[string]*Run{}, ProcessedRequests: map[string]string{}, RouteProfiles: map[string]*RouteProfile{}, Settings: AppSettings{SchoolRadius: 35}}}
 	data, err := os.ReadFile(filePath)
 	if errors.Is(err, os.ErrNotExist) {
 		return s, nil
@@ -131,8 +163,40 @@ func NewStore(filePath string) (*Store, error) {
 		s.state.ProcessedRequests = map[string]string{}
 	}
 	if s.state.RouteProfiles == nil { s.state.RouteProfiles = map[string]*RouteProfile{} }
-	if s.state.Version < 3 { s.state.Version = 3 }
+	if s.state.Settings.SchoolRadius <= 0 { s.state.Settings.SchoolRadius = 35 }
+	for index := range s.state.Timetable { normalizeTemplate(&s.state.Timetable[index]) }
+	for _, run := range s.state.Runs { normalizeRun(run) }
+	if s.state.Version < 4 { s.state.Version = 4 }
 	return s, nil
+}
+
+func validServiceType(value string) bool {
+	return value == "passenger" || value == "deadhead" || value == "group" || value == "none"
+}
+
+func normalizeTemplate(t *Template) {
+	if !validServiceType(t.OutboundType) { t.OutboundType = "passenger" }
+	if !validServiceType(t.InboundType) { t.InboundType = "passenger" }
+	if t.OutboundDeparture == "" { t.OutboundDeparture = t.PlannedDeparture }
+	if t.InboundArrival == "" { t.InboundArrival = t.PlannedArrival }
+}
+
+func normalizeRun(run *Run) {
+	if !validServiceType(run.OutboundType) { run.OutboundType = "passenger" }
+	if !validServiceType(run.InboundType) { run.InboundType = "passenger" }
+	if run.OutboundDeparture == "" { run.OutboundDeparture = run.PlannedDeparture }
+	if run.InboundArrival == "" { run.InboundArrival = run.PlannedArrival }
+	if run.OutboundStatus == "" || run.InboundStatus == "" {
+		switch run.Status {
+		case "arrived": run.OutboundStatus, run.InboundStatus = "arrived", "arrived"
+		case "cancelled": run.OutboundStatus, run.InboundStatus = "cancelled", "cancelled"
+		case "boarding", "departed": run.OutboundStatus, run.InboundStatus = run.Status, "waiting"
+		default: run.OutboundStatus, run.InboundStatus = "waiting", "waiting"
+		}
+	}
+	if run.OutboundType == "none" && run.OutboundStatus == "waiting" { run.OutboundStatus = "arrived" }
+	if run.InboundType == "none" && run.InboundStatus == "waiting" { run.InboundStatus = "arrived" }
+	syncRunStatus(run)
 }
 
 func (s *Store) saveLocked() error {
@@ -153,6 +217,7 @@ func (s *Store) saveLocked() error {
 func (s *Store) replaceTimetable(templates []Template) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	for index := range templates { normalizeTemplate(&templates[index]) }
 	s.state.Timetable = templates
 	s.addEventLocked("", "import", fmt.Sprintf("ダイヤを%d便取り込み", len(templates)))
 	return s.saveLocked()
@@ -204,9 +269,15 @@ func (s *Store) dashboard(date, day string) ([]Run, []Event, error) {
 			ID: id, ServiceDate: date, Day: day, OperationNo: t.OperationNo,
 			ColumnNo: t.ColumnNo, PlannedDeparture: t.PlannedDeparture,
 			PlannedArrival: t.PlannedArrival, Route: t.Route, Status: "waiting",
+			OutboundType: t.OutboundType, InboundType: t.InboundType,
+			OutboundStatus: "waiting", InboundStatus: "waiting",
+			OutboundDeparture: t.OutboundDeparture, OutboundArrival: t.OutboundArrival,
+			InboundDeparture: t.InboundDeparture, InboundArrival: t.InboundArrival,
+			ServiceDetails: t.Details,
 			Capacity: 55,
 			UpdatedAt: time.Now().In(jst).Format(time.RFC3339),
 		}
+		normalizeRun(s.state.Runs[id])
 		changed = true
 	}
 	if changed {
@@ -244,6 +315,8 @@ func (s *Store) dashboard(date, day string) ([]Run, []Event, error) {
 
 type DetailsInput struct {
 	PassengerCount    *int     `json:"passengerCount"`
+	OutboundPassengerCount *int `json:"outboundPassengerCount"`
+	InboundPassengerCount  *int `json:"inboundPassengerCount"`
 	VehicleNo         *string  `json:"vehicleNo"`
 	DriverName        *string  `json:"driverName"`
 	Note              *string  `json:"note"`
@@ -254,6 +327,8 @@ type DetailsInput struct {
 	LocationAccuracy  *float64 `json:"locationAccuracy"`
 	OutboundRouteProfileID *string `json:"outboundRouteProfileId"`
 	InboundRouteProfileID  *string `json:"inboundRouteProfileId"`
+	Leg                string   `json:"leg"`
+	LocationZone       *string  `json:"locationZone"`
 	OccurredAt        string   `json:"occurredAt"`
 	RequestID         string   `json:"requestId"`
 }
@@ -284,7 +359,16 @@ func (s *Store) updateDetails(id string, input DetailsInput) (*Run, error) {
 		if value < 0 { value = 0 }
 		if value > 999 { value = 999 }
 		run.PassengerCount = value
+		if input.Leg == "inbound" { run.InboundPassengerCount = value } else if input.Leg == "outbound" { run.OutboundPassengerCount = value }
 		humanChange = true
+	}
+	if input.OutboundPassengerCount != nil {
+		value := *input.OutboundPassengerCount; if value < 0 { value = 0 }; if value > 999 { value = 999 }
+		run.OutboundPassengerCount = value; humanChange = true
+	}
+	if input.InboundPassengerCount != nil {
+		value := *input.InboundPassengerCount; if value < 0 { value = 0 }; if value > 999 { value = 999 }
+		run.InboundPassengerCount = value; humanChange = true
 	}
 	if input.VehicleNo != nil { run.VehicleNo = clean(*input.VehicleNo, 30); humanChange = true }
 	if input.DriverName != nil { run.DriverName = clean(*input.DriverName, 60); humanChange = true }
@@ -301,6 +385,7 @@ func (s *Store) updateDetails(id string, input DetailsInput) (*Run, error) {
 		if value < 0 { value = 0 }
 		if value > 20 { value = 20 }
 		run.ProgressIndex = value
+		if input.Leg == "inbound" { run.InboundProgressIndex = value } else if input.Leg == "outbound" { run.OutboundProgressIndex = value }
 		humanChange = true
 	}
 	if input.OutboundRouteProfileID != nil {
@@ -330,6 +415,7 @@ func (s *Store) updateDetails(id string, input DetailsInput) (*Run, error) {
 		capturedAt := time.Now().In(jst)
 		if parsed, err := time.Parse(time.RFC3339, input.OccurredAt); err == nil { capturedAt = parsed.In(jst) }
 		run.LocationUpdatedAt = capturedAt.Format(time.RFC3339)
+		if input.LocationZone != nil { run.LocationZone = clean(*input.LocationZone, 30) }
 	}
 	run.UpdatedAt = time.Now().In(jst).Format(time.RFC3339)
 	if humanChange { s.addEventLocked(id, "updated", fmt.Sprintf("人数 %d名、定員 %d名、車両 %s、担当 %s", run.PassengerCount, run.Capacity, fallback(run.VehicleNo, "未定"), fallback(run.DriverName, "未定"))) }
@@ -394,7 +480,24 @@ func delayMinutes(serviceDate, planned string, actual time.Time) *int {
 	return &delay
 }
 
-func (s *Store) action(id, action, occurredAt, requestID string) (*Run, error) {
+func syncRunStatus(run *Run) {
+	statuses := []string{run.OutboundStatus, run.InboundStatus}
+	for _, status := range statuses { if status == "departed" { run.Status = "departed"; return } }
+	for _, status := range statuses { if status == "boarding" { run.Status = "boarding"; return } }
+	terminal := 0
+	cancelled := 0
+	for _, status := range statuses {
+		if status == "arrived" || status == "cancelled" { terminal++ }
+		if status == "cancelled" { cancelled++ }
+	}
+	if terminal == 2 {
+		if cancelled == 2 { run.Status = "cancelled" } else { run.Status = "arrived" }
+		return
+	}
+	run.Status = "waiting"
+}
+
+func (s *Store) action(id, action, leg, occurredAt, requestID string) (*Run, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	run, ok := s.state.Runs[id]
@@ -406,27 +509,57 @@ func (s *Store) action(id, action, occurredAt, requestID string) (*Run, error) {
 	now := time.Now().In(jst)
 	actionTime := now
 	if parsed, err := time.Parse(time.RFC3339, occurredAt); err == nil { actionTime = parsed.In(jst) }
+	if leg != "" && leg != "outbound" && leg != "inbound" { return nil, errors.New("往路または復路を指定してください") }
 	summary := ""
+	direction := "便"
+	serviceType := "passenger"
+	status := &run.Status
+	actualDeparture := &run.ActualDeparture
+	actualArrival := &run.ActualArrival
+	plannedDeparture := run.PlannedDeparture
+	plannedArrival := run.PlannedArrival
+	if leg == "outbound" {
+		direction, serviceType, status = "往路", run.OutboundType, &run.OutboundStatus
+		actualDeparture, actualArrival = &run.OutboundActualDeparture, &run.OutboundActualArrival
+		plannedDeparture, plannedArrival = run.OutboundDeparture, run.OutboundArrival
+	}
+	if leg == "inbound" {
+		direction, serviceType, status = "復路", run.InboundType, &run.InboundStatus
+		actualDeparture, actualArrival = &run.InboundActualDeparture, &run.InboundActualArrival
+		plannedDeparture, plannedArrival = run.InboundDeparture, run.InboundArrival
+	}
+	if leg != "" && serviceType == "none" { return nil, errors.New(direction+"は運行なしです") }
 	switch action {
 	case "boarding":
-		run.Status, summary = "boarding", "乗車受付を開始"
+		if serviceType == "deadhead" { return nil, errors.New("回送区間では受付を開始できません") }
+		*status, summary = "boarding", direction+"の乗車受付を開始"
 	case "depart":
-		run.Status, run.ActualDeparture = "departed", actionTime.Format(time.RFC3339)
-		run.DepartureDelayMinutes = delayMinutes(run.ServiceDate, run.PlannedDeparture, actionTime)
-		summary = "出発を記録"
+		*status, *actualDeparture = "departed", actionTime.Format(time.RFC3339)
+		if leg != "inbound" { run.DepartureDelayMinutes = delayMinutes(run.ServiceDate, plannedDeparture, actionTime) }
+		summary = direction+"の出発を記録"
 	case "arrive":
-		run.Status, run.ActualArrival = "arrived", actionTime.Format(time.RFC3339)
-		run.ArrivalDelayMinutes = delayMinutes(run.ServiceDate, run.PlannedArrival, actionTime)
-		summary = "到着を記録"
+		*status, *actualArrival = "arrived", actionTime.Format(time.RFC3339)
+		if leg != "outbound" { run.ArrivalDelayMinutes = delayMinutes(run.ServiceDate, plannedArrival, actionTime) }
+		summary = direction+"の到着を記録"
 	case "cancel":
-		run.Status, summary = "cancelled", "運休を記録"
+		if leg == "" { run.Status, run.OutboundStatus, run.InboundStatus = "cancelled", "cancelled", "cancelled" } else { *status = "cancelled" }
+		summary = direction+"の運休を記録"
 	case "reset":
+		if leg == "" {
+			run.OutboundStatus, run.InboundStatus = "waiting", "waiting"
+			run.OutboundActualDeparture, run.OutboundActualArrival, run.InboundActualDeparture, run.InboundActualArrival = "", "", "", ""
+		} else { *status, *actualDeparture, *actualArrival = "waiting", "", "" }
 		run.Status, run.ActualDeparture, run.ActualArrival = "waiting", "", ""
 		run.DepartureDelayMinutes, run.ArrivalDelayMinutes = nil, nil
-		summary = "待機へ戻す"
+		summary = direction+"を待機へ戻す"
 	default:
 		return nil, errors.New("不正な操作です")
 	}
+	if leg != "" { syncRunStatus(run) }
+	if leg == "outbound" { run.PassengerCount = run.OutboundPassengerCount }
+	if leg == "inbound" { run.PassengerCount = run.InboundPassengerCount }
+	if action == "depart" && leg != "inbound" && run.ActualDeparture == "" { run.ActualDeparture = actionTime.Format(time.RFC3339) }
+	if action == "arrive" && run.Status == "arrived" { run.ActualArrival = actionTime.Format(time.RFC3339) }
 	run.UpdatedAt = now.Format(time.RFC3339)
 	s.addEventLockedAt(id, action, summary, actionTime)
 	s.markRequestLocked(requestID, id)
@@ -439,6 +572,66 @@ func (s *Store) info() (int, int) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return len(s.state.Timetable), len(s.state.Runs)
+}
+
+func (s *Store) timetable() []Template {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	items := append([]Template(nil), s.state.Timetable...)
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Day != items[j].Day { return items[i].Day < items[j].Day }
+		if items[i].OperationNo != items[j].OperationNo { return items[i].OperationNo < items[j].OperationNo }
+		return items[i].ColumnNo < items[j].ColumnNo
+	})
+	return items
+}
+
+func (s *Store) saveTemplate(input Template) (*Template, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	input.Day = clean(input.Day, 10)
+	input.Route = clean(input.Route, 200)
+	input.Details = clean(input.Details, 500)
+	if input.Day != "土曜" && input.Day != "日曜" { return nil, errors.New("曜日が正しくありません") }
+	if input.OperationNo < 1 || input.OperationNo > 9 || input.ColumnNo < 1 || input.ColumnNo > 99 { return nil, errors.New("運用番号または便番号が正しくありません") }
+	if input.Route == "" { return nil, errors.New("経路を入力してください") }
+	for _, value := range []string{input.PlannedDeparture, input.PlannedArrival, input.OutboundDeparture, input.OutboundArrival, input.InboundDeparture, input.InboundArrival} {
+		if !validClock(value) { return nil, errors.New("時刻は24時間表記で入力してください") }
+	}
+	if !validServiceType(input.OutboundType) || !validServiceType(input.InboundType) { return nil, errors.New("便種別が正しくありません") }
+	normalizeTemplate(&input)
+	found := false
+	for index := range s.state.Timetable {
+		item := &s.state.Timetable[index]
+		if item.Day == input.Day && item.OperationNo == input.OperationNo && item.ColumnNo == input.ColumnNo { *item = input; found = true; break }
+	}
+	if !found { s.state.Timetable = append(s.state.Timetable, input) }
+	for _, run := range s.state.Runs {
+		if run.Day != input.Day || run.OperationNo != input.OperationNo || run.ColumnNo != input.ColumnNo || run.Status != "waiting" { continue }
+		run.PlannedDeparture, run.PlannedArrival, run.Route = input.PlannedDeparture, input.PlannedArrival, input.Route
+		run.OutboundType, run.InboundType = input.OutboundType, input.InboundType
+		run.OutboundDeparture, run.OutboundArrival = input.OutboundDeparture, input.OutboundArrival
+		run.InboundDeparture, run.InboundArrival, run.ServiceDetails = input.InboundDeparture, input.InboundArrival, input.Details
+		normalizeRun(run)
+	}
+	s.addEventLocked("", "timetable-edit", fmt.Sprintf("%s 運用%d 便%dの元ダイヤを保存", input.Day, input.OperationNo, input.ColumnNo))
+	if err := s.saveLocked(); err != nil { return nil, err }
+	copy := input
+	return &copy, nil
+}
+
+func (s *Store) settings() AppSettings {
+	s.mu.RLock(); defer s.mu.RUnlock(); return s.state.Settings
+}
+
+func (s *Store) saveSettings(input AppSettings) (AppSettings, error) {
+	s.mu.Lock(); defer s.mu.Unlock()
+	if input.SchoolLatitude < -90 || input.SchoolLatitude > 90 || input.SchoolLongitude < -180 || input.SchoolLongitude > 180 { return AppSettings{}, errors.New("学校地点が正しくありません") }
+	if input.SchoolRadius < 5 { input.SchoolRadius = 5 }
+	if input.SchoolRadius > 200 { input.SchoolRadius = 200 }
+	s.state.Settings = input
+	s.addEventLocked("", "school-point", "学校地点⓪を更新")
+	return input, s.saveLocked()
 }
 
 type sheetRef struct {
@@ -623,6 +816,16 @@ func (s *Store) saveRouteProfile(input RouteProfileInput) (*RouteProfile, error)
 	for _, point := range append(append([]GeoPoint{}, input.Waypoints...), input.Geometry...) {
 		if !validPoint(point) { return nil, errors.New("地点情報が正しくありません") }
 	}
+	if s.state.Settings.SchoolLatitude != 0 || s.state.Settings.SchoolLongitude != 0 {
+		school := GeoPoint{Latitude:s.state.Settings.SchoolLatitude, Longitude:s.state.Settings.SchoolLongitude}
+		if input.Direction == "outbound" {
+			input.Waypoints[0] = school
+			if len(input.Geometry) > 0 { input.Geometry[0] = school }
+		} else {
+			input.Waypoints[len(input.Waypoints)-1] = school
+			if len(input.Geometry) > 0 { input.Geometry[len(input.Geometry)-1] = school }
+		}
+	}
 	id := clean(input.ID, 100)
 	if id == "" { id = randomID() }
 	if input.Color == "" { input.Color = "#1e60aa" }
@@ -709,7 +912,31 @@ func (a *App) dashboard(w http.ResponseWriter, r *http.Request) {
 	runs, events, err := a.store.dashboard(date, day)
 	if err != nil { writeJSON(w, 500, map[string]string{"error":"運行情報を保存できません"}); return }
 	timetableCount, runCount := a.store.info()
-	writeJSON(w, 200, map[string]any{"runs":runs, "events":events, "routeProfiles":a.store.listRouteProfiles(), "timetableCount":timetableCount, "runCount":runCount})
+	writeJSON(w, 200, map[string]any{"runs":runs, "events":events, "routeProfiles":a.store.listRouteProfiles(), "timetable":a.store.timetable(), "settings":a.store.settings(), "timetableCount":timetableCount, "runCount":runCount})
+}
+
+func (a *App) timetable(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet { writeJSON(w, 200, map[string]any{"timetable":a.store.timetable()}); return }
+	if r.Method == http.MethodPut {
+		var input Template
+		if !decodeJSON(w, r, &input) { return }
+		saved, err := a.store.saveTemplate(input)
+		if err != nil { writeJSON(w, 400, map[string]string{"error":err.Error()}); return }
+		writeJSON(w, 200, saved); return
+	}
+	http.NotFound(w, r)
+}
+
+func (a *App) settings(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet { writeJSON(w, 200, a.store.settings()); return }
+	if r.Method == http.MethodPatch {
+		var input AppSettings
+		if !decodeJSON(w, r, &input) { return }
+		saved, err := a.store.saveSettings(input)
+		if err != nil { writeJSON(w, 400, map[string]string{"error":err.Error()}); return }
+		writeJSON(w, 200, saved); return
+	}
+	http.NotFound(w, r)
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, target any) bool {
@@ -785,11 +1012,12 @@ func (a *App) runRoute(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var input struct {
 			Action     string `json:"action"`
+			Leg        string `json:"leg"`
 			OccurredAt string `json:"occurredAt"`
 			RequestID  string `json:"requestId"`
 		}
 		if !decodeJSON(w, r, &input) { return }
-		run, err := a.store.action(id, input.Action, input.OccurredAt, input.RequestID)
+		run, err := a.store.action(id, input.Action, input.Leg, input.OccurredAt, input.RequestID)
 		if errors.Is(err, os.ErrNotExist) { writeJSON(w, 404, map[string]string{"error":"便が見つかりません"}); return }
 		if err != nil { writeJSON(w, 400, map[string]string{"error":err.Error()}); return }
 		writeJSON(w, 200, run); return
@@ -874,6 +1102,10 @@ func main() {
 	mux.HandleFunc("POST /api/route-profiles/auto-assign", app.autoAssignRoutes)
 	mux.HandleFunc("POST /api/routes/resolve", app.resolveRoute)
 	mux.HandleFunc("POST /api/timetable/import", app.importTimetable)
+	mux.HandleFunc("GET /api/timetable", app.timetable)
+	mux.HandleFunc("PUT /api/timetable", app.timetable)
+	mux.HandleFunc("GET /api/settings", app.settings)
+	mux.HandleFunc("PATCH /api/settings", app.settings)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
 	staticFiles, err := fs.Sub(webFiles, "web")
 	if err != nil { log.Fatal(err) }

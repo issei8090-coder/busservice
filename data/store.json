@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "timetable": [
     {
       "day": "土曜",
@@ -7,7 +7,14 @@
       "columnNo": 1,
       "plannedDeparture": "9:00",
       "plannedArrival": "9:25",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "9:25",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -15,7 +22,14 @@
       "columnNo": 2,
       "plannedDeparture": "9:27",
       "plannedArrival": "10:05",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:27",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:05",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -23,7 +37,14 @@
       "columnNo": 3,
       "plannedDeparture": "10:55",
       "plannedArrival": "11:35",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:55",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:35",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -31,7 +52,14 @@
       "columnNo": 4,
       "plannedDeparture": "12:00",
       "plannedArrival": "12:45",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:45",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -39,7 +67,14 @@
       "columnNo": 5,
       "plannedDeparture": "16:30",
       "plannedArrival": "17:30",
-      "route": "学校 → 南古谷 → 本川越 → 学校"
+      "route": "学校 → 南古谷 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "17:30",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -47,7 +82,14 @@
       "columnNo": 1,
       "plannedDeparture": "8:20",
       "plannedArrival": "9:20",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "8:20",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "9:20",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -55,7 +97,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:15",
       "plannedArrival": "10:55",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:55",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -63,7 +112,14 @@
       "columnNo": 3,
       "plannedDeparture": "11:00",
       "plannedArrival": "12:00",
-      "route": "学校 → 本川越 → 南古谷 → 学校"
+      "route": "学校 → 本川越 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:00",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -71,7 +127,14 @@
       "columnNo": 4,
       "plannedDeparture": "13:15",
       "plannedArrival": "13:45",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "13:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "13:45",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -79,7 +142,14 @@
       "columnNo": 5,
       "plannedDeparture": "16:10",
       "plannedArrival": "16:45",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:10",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:45",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -87,7 +157,14 @@
       "columnNo": 1,
       "plannedDeparture": "8:50",
       "plannedArrival": "9:25",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "8:50",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "9:25",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -95,7 +172,14 @@
       "columnNo": 2,
       "plannedDeparture": "9:30",
       "plannedArrival": "10:30",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:30",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -103,7 +187,14 @@
       "columnNo": 3,
       "plannedDeparture": "11:15",
       "plannedArrival": "11:55",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:55",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -111,7 +202,14 @@
       "columnNo": 4,
       "plannedDeparture": "13:30",
       "plannedArrival": "14:15",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "13:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "14:15",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -119,7 +217,14 @@
       "columnNo": 5,
       "plannedDeparture": "16:15",
       "plannedArrival": "16:50",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:50",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -127,7 +232,14 @@
       "columnNo": 1,
       "plannedDeparture": "8:55",
       "plannedArrival": "10:00",
-      "route": "学校 → 本川越 → 南古谷 → 学校"
+      "route": "学校 → 本川越 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "8:55",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:00",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -135,7 +247,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:35",
       "plannedArrival": "11:15",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:35",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:15",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -143,7 +262,14 @@
       "columnNo": 3,
       "plannedDeparture": "12:00",
       "plannedArrival": "13:00",
-      "route": "学校 → 本川越 → 南古谷 → 学校"
+      "route": "学校 → 本川越 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "13:00",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -151,7 +277,14 @@
       "columnNo": 4,
       "plannedDeparture": "16:30",
       "plannedArrival": "17:05",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "17:05",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -159,7 +292,14 @@
       "columnNo": 1,
       "plannedDeparture": "9:40",
       "plannedArrival": "10:02",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:40",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:02",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -167,7 +307,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:05",
       "plannedArrival": "11:00",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:05",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:00",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -175,7 +322,14 @@
       "columnNo": 3,
       "plannedDeparture": "12:50",
       "plannedArrival": "13:55",
-      "route": "学校 → 南古谷 → 本川越 → 学校"
+      "route": "学校 → 南古谷 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:50",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "13:55",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -183,7 +337,14 @@
       "columnNo": 4,
       "plannedDeparture": "14:35",
       "plannedArrival": "15:05",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "14:35",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "15:05",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -191,7 +352,14 @@
       "columnNo": 5,
       "plannedDeparture": "16:20",
       "plannedArrival": "16:55",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:20",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:55",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -199,7 +367,14 @@
       "columnNo": 1,
       "plannedDeparture": "9:40",
       "plannedArrival": "10:20",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:40",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:20",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -207,7 +382,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:25",
       "plannedArrival": "11:25",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:25",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:25",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -215,7 +397,14 @@
       "columnNo": 3,
       "plannedDeparture": "12:30",
       "plannedArrival": "13:15",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "13:15",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -223,7 +412,14 @@
       "columnNo": 4,
       "plannedDeparture": "14:30",
       "plannedArrival": "15:25",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "14:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "15:25",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -231,7 +427,14 @@
       "columnNo": 5,
       "plannedDeparture": "16:20",
       "plannedArrival": "17:15",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:20",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "17:15",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -239,7 +442,14 @@
       "columnNo": 1,
       "plannedDeparture": "9:55",
       "plannedArrival": "10:35",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:55",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:35",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -247,7 +457,14 @@
       "columnNo": 2,
       "plannedDeparture": "11:35",
       "plannedArrival": "12:15",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:35",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:15",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -255,7 +472,14 @@
       "columnNo": 3,
       "plannedDeparture": "13:30",
       "plannedArrival": "14:40",
-      "route": "学校 → 本川越 → 南古谷 → 学校"
+      "route": "学校 → 本川越 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "13:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "14:40",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -263,7 +487,14 @@
       "columnNo": 4,
       "plannedDeparture": "16:10",
       "plannedArrival": "16:35",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:10",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:35",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -271,7 +502,14 @@
       "columnNo": 1,
       "plannedDeparture": "10:00",
       "plannedArrival": "10:25",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:25",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -279,7 +517,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:40",
       "plannedArrival": "11:02",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:40",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:02",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -287,7 +532,14 @@
       "columnNo": 3,
       "plannedDeparture": "11:20",
       "plannedArrival": "11:42",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:20",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:42",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -295,7 +547,14 @@
       "columnNo": 4,
       "plannedDeparture": "13:00",
       "plannedArrival": "13:45",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "13:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "13:45",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -303,7 +562,14 @@
       "columnNo": 5,
       "plannedDeparture": "15:30",
       "plannedArrival": "16:05",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "15:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:05",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -311,7 +577,14 @@
       "columnNo": 6,
       "plannedDeparture": "16:15",
       "plannedArrival": "16:40",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:40",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -319,7 +592,14 @@
       "columnNo": 1,
       "plannedDeparture": "10:20",
       "plannedArrival": "10:42",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:20",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:42",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -327,7 +607,14 @@
       "columnNo": 2,
       "plannedDeparture": "11:00",
       "plannedArrival": "11:22",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:22",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -335,7 +622,14 @@
       "columnNo": 3,
       "plannedDeparture": "12:15",
       "plannedArrival": "12:45",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:45",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -343,7 +637,14 @@
       "columnNo": 4,
       "plannedDeparture": "14:30",
       "plannedArrival": "15:15",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "14:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "15:15",
+      "details": ""
     },
     {
       "day": "土曜",
@@ -351,7 +652,14 @@
       "columnNo": 5,
       "plannedDeparture": "16:15",
       "plannedArrival": "17:10",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "17:10",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -359,7 +667,14 @@
       "columnNo": 1,
       "plannedDeparture": "8:20",
       "plannedArrival": "9:20",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "8:20",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "9:20",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -367,7 +682,14 @@
       "columnNo": 2,
       "plannedDeparture": "9:25",
       "plannedArrival": "10:05",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:25",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:05",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -375,7 +697,14 @@
       "columnNo": 3,
       "plannedDeparture": "11:00",
       "plannedArrival": "12:00",
-      "route": "本川越 → 南古谷 → 学校"
+      "route": "本川越 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:00",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -383,7 +712,14 @@
       "columnNo": 4,
       "plannedDeparture": "13:00",
       "plannedArrival": "13:45",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "13:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "13:45",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -391,7 +727,14 @@
       "columnNo": 5,
       "plannedDeparture": "15:00",
       "plannedArrival": "15:45",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "15:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "15:45",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -399,7 +742,14 @@
       "columnNo": 6,
       "plannedDeparture": "16:30",
       "plannedArrival": "17:05",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "17:05",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -407,7 +757,14 @@
       "columnNo": 1,
       "plannedDeparture": "8:45",
       "plannedArrival": "9:25",
-      "route": "ふじみ野 → 学校"
+      "route": "ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "8:45",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "9:25",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -415,7 +772,14 @@
       "columnNo": 2,
       "plannedDeparture": "9:30",
       "plannedArrival": "10:30",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:30",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -423,7 +787,14 @@
       "columnNo": 3,
       "plannedDeparture": "11:05",
       "plannedArrival": "11:45",
-      "route": "ふじみ野 → 学校"
+      "route": "ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:05",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:45",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -431,7 +802,14 @@
       "columnNo": 4,
       "plannedDeparture": "12:30",
       "plannedArrival": "13:05",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "13:05",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -439,7 +817,14 @@
       "columnNo": 5,
       "plannedDeparture": "13:30",
       "plannedArrival": "14:40",
-      "route": "学校 → 南古谷 → 本川越 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 本川越 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "13:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "14:40",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -447,7 +832,14 @@
       "columnNo": 6,
       "plannedDeparture": "16:15",
       "plannedArrival": "16:50",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:50",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -455,7 +847,14 @@
       "columnNo": 7,
       "plannedDeparture": "17:00",
       "plannedArrival": "17:55",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "17:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "17:55",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -463,7 +862,14 @@
       "columnNo": 1,
       "plannedDeparture": "8:55",
       "plannedArrival": "10:00",
-      "route": "本川越 → 南古谷 → 学校"
+      "route": "本川越 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "8:55",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:00",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -471,7 +877,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:05",
       "plannedArrival": "11:00",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:05",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:00",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -479,7 +892,14 @@
       "columnNo": 3,
       "plannedDeparture": "11:35",
       "plannedArrival": "12:15",
-      "route": "ふじみ野 → 学校"
+      "route": "ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:35",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:15",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -487,7 +907,14 @@
       "columnNo": 4,
       "plannedDeparture": "14:00",
       "plannedArrival": "14:45",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "14:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "14:45",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -495,7 +922,14 @@
       "columnNo": 5,
       "plannedDeparture": "16:15",
       "plannedArrival": "16:35",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:35",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -503,7 +937,14 @@
       "columnNo": 1,
       "plannedDeparture": "9:00",
       "plannedArrival": "9:25",
-      "route": "南古谷 → 学校"
+      "route": "南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "9:25",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -511,7 +952,14 @@
       "columnNo": 2,
       "plannedDeparture": "9:35",
       "plannedArrival": "10:00",
-      "route": "南古谷 → 学校"
+      "route": "南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:35",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:00",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -519,7 +967,14 @@
       "columnNo": 3,
       "plannedDeparture": "10:05",
       "plannedArrival": "10:45",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:05",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:45",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -527,7 +982,14 @@
       "columnNo": 4,
       "plannedDeparture": "11:20",
       "plannedArrival": "11:42",
-      "route": "南古谷 → 学校"
+      "route": "南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:20",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:42",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -535,7 +997,14 @@
       "columnNo": 5,
       "plannedDeparture": "12:15",
       "plannedArrival": "12:55",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:55",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -543,7 +1012,14 @@
       "columnNo": 6,
       "plannedDeparture": "14:00",
       "plannedArrival": "14:55",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "14:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "14:55",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -551,7 +1027,14 @@
       "columnNo": 7,
       "plannedDeparture": "16:15",
       "plannedArrival": "17:10",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "17:10",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -559,7 +1042,14 @@
       "columnNo": 1,
       "plannedDeparture": "9:55",
       "plannedArrival": "10:25",
-      "route": "南古谷 → 学校"
+      "route": "南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:55",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:25",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -567,7 +1057,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:35",
       "plannedArrival": "11:05",
-      "route": "南古谷 → 学校"
+      "route": "南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:35",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:05",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -575,7 +1072,14 @@
       "columnNo": 3,
       "plannedDeparture": "11:40",
       "plannedArrival": "12:05",
-      "route": "南古谷 → 学校"
+      "route": "南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:40",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:05",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -583,7 +1087,14 @@
       "columnNo": 4,
       "plannedDeparture": "12:30",
       "plannedArrival": "13:15",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "13:15",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -591,7 +1102,14 @@
       "columnNo": 5,
       "plannedDeparture": "14:30",
       "plannedArrival": "15:35",
-      "route": "学校 → 南古谷 → 本川越 → 学校"
+      "route": "学校 → 南古谷 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "14:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "15:35",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -599,7 +1117,14 @@
       "columnNo": 6,
       "plannedDeparture": "16:30",
       "plannedArrival": "17:35",
-      "route": "学校 → 南古谷 → 本川越 → 学校"
+      "route": "学校 → 南古谷 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "16:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "17:35",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -607,7 +1132,14 @@
       "columnNo": 1,
       "plannedDeparture": "9:15",
       "plannedArrival": "10:15",
-      "route": "本川越 → 学校"
+      "route": "本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:15",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -615,7 +1147,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:20",
       "plannedArrival": "10:45",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:20",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:45",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -623,7 +1162,14 @@
       "columnNo": 3,
       "plannedDeparture": "11:25",
       "plannedArrival": "12:25",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:25",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:25",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -631,7 +1177,14 @@
       "columnNo": 4,
       "plannedDeparture": "13:15",
       "plannedArrival": "13:45",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "13:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "13:45",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -639,7 +1192,14 @@
       "columnNo": 5,
       "plannedDeparture": "15:00",
       "plannedArrival": "16:00",
-      "route": "学校 → 本川越 → 南古谷 → 学校"
+      "route": "学校 → 本川越 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "15:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:00",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -647,7 +1207,14 @@
       "columnNo": 6,
       "plannedDeparture": "17:10",
       "plannedArrival": "",
-      "route": "学校 → 南古谷 → 本川越 → 南古谷"
+      "route": "学校 → 南古谷 → 本川越 → 南古谷",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "17:10",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -655,7 +1222,14 @@
       "columnNo": 1,
       "plannedDeparture": "9:40",
       "plannedArrival": "10:20",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:40",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:20",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -663,7 +1237,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:22",
       "plannedArrival": "11:00",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:22",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:00",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -671,7 +1252,14 @@
       "columnNo": 3,
       "plannedDeparture": "11:03",
       "plannedArrival": "11:25",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "11:03",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:25",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -679,7 +1267,14 @@
       "columnNo": 4,
       "plannedDeparture": "12:30",
       "plannedArrival": "13:25",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "13:25",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -687,7 +1282,14 @@
       "columnNo": 5,
       "plannedDeparture": "15:15",
       "plannedArrival": "15:45",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "15:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "15:45",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -695,7 +1297,14 @@
       "columnNo": 6,
       "plannedDeparture": "17:30",
       "plannedArrival": "17:55",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "17:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "17:55",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -703,7 +1312,14 @@
       "columnNo": 1,
       "plannedDeparture": "9:55",
       "plannedArrival": "10:35",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:55",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:35",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -711,7 +1327,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:37",
       "plannedArrival": "11:15",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:37",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:15",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -719,7 +1342,14 @@
       "columnNo": 3,
       "plannedDeparture": "12:00",
       "plannedArrival": "12:45",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:00",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:45",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -727,7 +1357,14 @@
       "columnNo": 4,
       "plannedDeparture": "14:10",
       "plannedArrival": "14:40",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "14:10",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "14:40",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -735,7 +1372,14 @@
       "columnNo": 5,
       "plannedDeparture": "15:30",
       "plannedArrival": "16:35",
-      "route": "学校 → 南古谷 → 本川越 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 本川越 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "15:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:35",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -743,7 +1387,14 @@
       "columnNo": 1,
       "plannedDeparture": "9:55",
       "plannedArrival": "10:20",
-      "route": "南古谷 → 学校"
+      "route": "南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "9:55",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "10:20",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -751,7 +1402,14 @@
       "columnNo": 2,
       "plannedDeparture": "10:25",
       "plannedArrival": "11:25",
-      "route": "学校 → 本川越 → 学校"
+      "route": "学校 → 本川越 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "10:25",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "11:25",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -759,7 +1417,14 @@
       "columnNo": 3,
       "plannedDeparture": "12:15",
       "plannedArrival": "12:45",
-      "route": "学校 → 南古谷 → 学校"
+      "route": "学校 → 南古谷 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "12:15",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "12:45",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -767,7 +1432,14 @@
       "columnNo": 4,
       "plannedDeparture": "13:30",
       "plannedArrival": "14:15",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "13:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "14:15",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -775,7 +1447,14 @@
       "columnNo": 5,
       "plannedDeparture": "15:30",
       "plannedArrival": "16:05",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "15:30",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "16:05",
+      "details": ""
     },
     {
       "day": "日曜",
@@ -783,7 +1462,14 @@
       "columnNo": 6,
       "plannedDeparture": "17:10",
       "plannedArrival": "17:45",
-      "route": "学校 → ふじみ野 → 学校"
+      "route": "学校 → ふじみ野 → 学校",
+      "outboundType": "passenger",
+      "inboundType": "passenger",
+      "outboundDeparture": "17:10",
+      "outboundArrival": "",
+      "inboundDeparture": "",
+      "inboundArrival": "17:45",
+      "details": ""
     }
   ],
   "runs": {},
@@ -797,5 +1483,8 @@
     }
   ],
   "processedRequests": {},
-  "routeProfiles": {}
+  "routeProfiles": {},
+  "settings": {
+    "schoolRadius": 35
+  }
 }

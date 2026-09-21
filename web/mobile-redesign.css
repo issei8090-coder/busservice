@@ -1,0 +1,246 @@
+:root{
+  --surface:#ffffff;
+  --surface-muted:#f1f4f6;
+  --ink:#17212b;
+  --ink-muted:#5d6b78;
+  --border:#d9e0e6;
+  --accent:#15845f;
+  --accent-soft:#e4f4ee;
+  --deep:#102b43;
+  --danger:#b52a3f;
+  --warning:#a85b0b;
+  --radius-sm:10px;
+  --radius-md:16px;
+  --shadow-sm:0 1px 3px rgba(16,43,67,.08);
+  --shadow-md:0 8px 24px rgba(16,43,67,.10);
+}
+
+html{background:#f5f7f8;scroll-behavior:smooth}
+body{color:var(--ink);background:#f5f7f8;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+main{width:min(100%,1600px);margin-inline:auto}
+.card{border-color:var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm)}
+
+button{letter-spacing:.02em;box-shadow:none;transition:background-color .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease,opacity .16s ease,transform .1s ease;touch-action:manipulation}
+button:hover:not(:disabled){background-color:#23c483;box-shadow:0 6px 14px rgba(35,196,131,.18);color:#fff;transform:none}
+button:active:not(:disabled){transform:scale(.98)}
+.button,.next-button,.priority-action{min-height:46px;box-shadow:none}
+.button.primary,.next-button,.priority-action{background:var(--deep)}
+.button.secondary{border-color:var(--border);background:var(--surface)}
+.icon-button,.edit-button{min-width:44px;min-height:44px}
+
+.sidebar{background:var(--deep)}
+.nav-button{border-radius:12px;color:#c8d2db}
+.nav-button:hover,.nav-button.active{background:#fff;color:var(--deep);box-shadow:none}
+.topbar{background:rgba(255,255,255,.96);backdrop-filter:none}
+
+.sazzad-card{height:88px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface);backdrop-filter:none;box-shadow:var(--shadow-sm);transition:border-color .16s ease,box-shadow .16s ease}
+.sazzad-card:hover{border-color:#b9c6d0;box-shadow:var(--shadow-md);transform:none}
+.sazzad-bg,.sazzad-aurora{display:none}
+.metric-content{position:relative;z-index:1}
+.metric-icon{border-radius:12px}
+.metric strong{font-variant-numeric:tabular-nums}
+
+.priority-strip{border:1px solid #173d5c;border-radius:var(--radius-md);background:var(--deep);box-shadow:none}
+.priority-strip::before,.priority-strip::after{display:none}
+.runs-panel{border-radius:var(--radius-md)}
+.run-card{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface);backdrop-filter:none;box-shadow:var(--shadow-sm)}
+.run-card.in-service{background:#fffbf3}
+.filter-tabs button{min-height:44px;border:1px solid transparent;box-shadow:none}
+.filter-tabs button.active{border-color:var(--deep);background:var(--deep);box-shadow:none}
+.passenger-stepper button{box-shadow:none;border:1px solid #b8d9ce;background:#fff}
+.passenger-stepper button.quick-ten{border-color:var(--accent);background:var(--accent)}
+
+.launch-gate{background:var(--deep)}
+.launch-panel{border:0;border-radius:24px;background:#153650;box-shadow:none;backdrop-filter:none}
+.launch-kicker{color:#8ce7c8}
+.launch-operation-grid button{border:1px solid #416179;border-radius:16px;background:#1a405e}
+.launch-operation-grid button:hover{border-color:#23c483;background:#23c483}
+.launch-operation-grid button.previous{border-color:#6cddba;box-shadow:inset 0 0 0 1px #6cddba}
+.launch-admin{box-shadow:none}
+
+.timetable-form,.leg-edit-grid fieldset,.fleet-vehicle-list article{box-shadow:none}
+.timetable-form{background:#f7f9fa}
+.timetable-list button{box-shadow:none}
+.timetable-list button:hover,.timetable-list button.active{border-color:var(--accent);background:var(--accent-soft)}
+.fleet-map-shell{border-radius:var(--radius-md)}
+
+.drive-view{background:#081e31}
+.drive-header{background:#0d2940;box-shadow:none}
+.drive-safety{background:#12354f}
+.drive-content{gap:12px}
+.drive-run-deck-section,.drive-primary,.drive-route-progress,.drive-operation-chooser{border:1px solid rgba(255,255,255,.13);background:#0d2940;box-shadow:none;backdrop-filter:none}
+.drive-primary::before,.drive-primary::after{display:none}
+.drive-run-card{border-radius:16px;background:#123650}
+.drive-run-card:hover{background:#17435f}
+.drive-run-card.active{border:2px solid #36f9c7;background:#123f59;box-shadow:none}
+.drive-operation-card{box-shadow:none}
+.drive-operation-card:hover,.drive-operation-card:focus-visible{box-shadow:none}
+.drive-leg-switch button{border-radius:14px;background:#12354f}
+.drive-leg-switch button.active{border-color:#36f9c7;background:#36f9c7}
+.drive-passengers,.drive-action-panel,.drive-next-run{border-radius:18px;box-shadow:none}
+.drive-main-action{box-shadow:none}
+.drive-count-actions button{box-shadow:none}
+.drive-route-progress{border-radius:18px}
+
+input,select,textarea{color:var(--ink)}
+input,select,textarea,.date-control,.search-control{border-color:var(--border)}
+
+@media(max-width:900px){
+  .app-shell{display:block;min-height:100dvh}
+  .sidebar{position:fixed;z-index:100;inset:auto 0 0;width:auto;height:calc(66px + env(safe-area-inset-bottom));transform:none;background:rgba(255,255,255,.98);border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(16,43,67,.08);color:var(--ink)}
+  .sidebar.open{transform:none}
+  .sidebar .brand,.sidebar-foot{display:none}
+  .sidebar nav{height:100%;padding:6px max(6px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(6px,env(safe-area-inset-left));display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
+  .nav-button{min-width:0;min-height:54px;padding:4px 2px;border-radius:10px;display:flex;flex-direction:column;justify-content:center;gap:2px;color:#60707d;font-size:10px;line-height:1.15;text-align:center;white-space:nowrap}
+  .nav-button svg{width:21px;height:21px}
+  .nav-button:hover,.nav-button.active{color:var(--accent);background:var(--accent-soft);box-shadow:none}
+  .menu-button{display:none}
+  .workspace{padding-bottom:calc(66px + env(safe-area-inset-bottom))}
+  .topbar{min-height:62px;height:auto;padding:8px max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));gap:10px}
+  .topbar h1{font-size:17px}
+  .topbar p{display:none}
+  .day-mode{gap:6px}
+  .day-name{font-size:11px;letter-spacing:0}
+  .neo-toggle-container{--toggle-width:64px;--toggle-height:32px}
+  .neo-thumb{top:3px;left:3px;width:26px;height:26px}
+  .neo-toggle-input:checked+.neo-toggle .neo-thumb{transform:translateX(32px)}
+  main{padding:12px}
+}
+
+@media(max-width:640px){
+  body{font-size:16px}
+  main{padding:10px 10px 16px}
+  .toolbar{min-height:0;padding:10px;display:block}
+  .toolbar-copy{display:none}
+  .toolbar-actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .toolbar-actions .date-control{grid-column:1/-1;width:100%;min-height:46px}
+  .toolbar-actions .date-control input{width:100%;font-size:16px}
+  .toolbar-actions .button{width:100%;min-height:48px;padding:0 12px}
+  .metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+  .sazzad-card{height:74px;min-height:74px;padding:9px}
+  .metric-icon{width:36px;height:36px}
+  .metric small{font-size:11px}
+  .metric strong{font-size:23px}
+  .priority-strip{min-height:0;margin-top:10px;padding:12px;border-radius:14px}
+  .priority-route strong{font-size:17px}
+  .priority-action{min-height:50px}
+  .filters{padding:9px;gap:8px}
+  .filter-tabs{margin-inline:-1px;padding-bottom:1px}
+  .filter-tabs button{min-height:42px;padding:0 14px}
+  .search-control{height:46px}
+  .search-control input{min-width:0;width:100%;font-size:16px}
+  .run-card{padding:13px;border-radius:14px}
+  .mobile-time{font-size:29px}
+  .mobile-route{margin:9px 0}
+  .mobile-controls{align-items:stretch;flex-direction:column}
+  .mobile-side-actions{display:grid;grid-template-columns:1fr 48px;gap:8px}
+  .mobile-side-actions .button,.mobile-side-actions .next-button{width:100%}
+  .leg-passenger-pair{width:100%;grid-template-columns:48px minmax(0,1fr)}
+  .leg-passenger-pair .passenger-stepper.compact{grid-template-columns:48px minmax(64px,1fr) 48px 58px}
+  .leg-passenger-pair .passenger-stepper.compact button{min-width:48px;min-height:48px}
+  .mobile-next{min-height:52px}
+  .settings-card,.timetable-editor,.fleet-map-card,.fleet-side{padding:14px}
+  .settings-card{border-radius:14px}
+  .file-drop{min-height:150px}
+  .timetable-editor-layout{display:block}
+  .timetable-list{max-height:220px}
+  .timetable-form{margin-top:12px;padding:12px;border-radius:14px}
+  .leg-edit-grid fieldset{border-radius:12px}
+  .leg-edit-grid label{grid-template-columns:72px minmax(0,1fr)}
+  .form-grid input,.form-grid select,.form-grid textarea,.leg-edit-grid input,.leg-edit-grid select,.template-details textarea{min-height:46px;font-size:16px}
+  .dialog-actions{display:grid;grid-template-columns:1fr 1fr}
+  .dialog-actions .button{width:100%;min-height:50px;padding:0 10px}
+  .fleet-side{order:0}
+  .fleet-map-shell{height:50dvh;min-height:300px}
+  .school-point-form input{font-size:16px}
+  .history-item{padding:12px}
+  dialog[open]{position:fixed;inset:auto 0 0;width:100%;max-width:none;max-height:92dvh;margin:0;border-radius:20px 20px 0 0;overflow:auto;padding-bottom:env(safe-area-inset-bottom)}
+  dialog form{padding:18px 16px}
+  .toast-region{right:10px;bottom:calc(76px + env(safe-area-inset-bottom));left:10px}
+  .toast{width:100%;max-width:none}
+
+  .launch-gate{align-items:start;padding:0;overflow:auto}
+  .launch-panel{width:100%;min-height:100dvh;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));border-radius:0}
+  .launch-panel h1{font-size:32px}
+  .launch-operation-grid{grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+  .launch-operation-grid button{min-height:64px;border-radius:14px}
+  .launch-operation-grid strong{font-size:25px}
+  .launch-operation-grid span{font-size:10px}
+  .launch-admin{min-height:54px;margin-top:16px}
+
+  .drive-header{min-height:60px;padding-block:8px}
+  .drive-heading-group h2{font-size:16px}
+  .drive-heading-group p{font-size:10px}
+  .drive-header-actions{gap:4px}
+  .drive-operation-button,.drive-awake-button,.drive-settings-button,.drive-exit-button{min-width:44px;min-height:44px;padding:0;justify-content:center}
+  .drive-content{padding:8px max(8px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));gap:8px}
+  .drive-run-deck-section{padding:10px;border-radius:14px}
+  .drive-deck-heading>div>strong{font-size:16px}
+  .drive-run-deck{margin-top:8px;padding-bottom:8px}
+  .drive-run-card{flex-basis:78vw;min-height:112px;padding:11px 12px;border-radius:14px}
+  .drive-run-card>strong{font-size:25px}
+  .drive-run-card>small{min-height:30px}
+  .drive-deck-controls{gap:8px}
+  .drive-deck-controls button{min-height:48px}
+  .drive-leg-switch{gap:8px}
+  .drive-leg-switch button{min-height:58px;padding:7px 10px;border-radius:12px}
+  .drive-leg-switch button span{font-size:17px}
+  .drive-primary{min-height:250px;padding:18px;border-radius:16px}
+  .drive-route{margin-top:10px}
+  .drive-route strong{font-size:21px}
+  .drive-countdown{margin-top:20px}
+  .drive-countdown>strong{font-size:clamp(54px,17vw,72px)}
+  .drive-passengers{padding:16px;border-radius:16px}
+  .drive-passenger-value{height:104px;margin:10px auto}
+  .drive-passenger-value input{font-size:58px}
+  .drive-count-actions{gap:8px}
+  .drive-count-actions button{min-height:58px;padding:0 4px}
+  .drive-action-panel{position:sticky;z-index:20;bottom:max(6px,env(safe-area-inset-bottom));padding:7px;border-radius:16px;background:#081e31}
+  .drive-main-action{min-height:68px;font-size:22px}
+  .drive-action-panel p{display:none}
+  .drive-next-run{padding:14px;border-radius:16px}
+  .drive-route-progress{padding:14px;border-radius:16px}
+  .drive-progress-heading{gap:10px}
+  .drive-progress-actions button{min-height:48px}
+  .drive-operation-chooser{min-height:calc(100dvh - 118px);padding:18px 12px;border-radius:16px}
+  .drive-chooser-copy h3{font-size:30px}
+  .drive-operation-card{min-height:112px;padding:14px;border-radius:14px}
+  .drive-operation-card>strong{margin-top:12px;font-size:21px}
+}
+
+@media(max-width:380px){
+  .day-name{display:none}
+  .metrics{grid-template-columns:1fr 1fr}
+  .metric{gap:7px}
+  .metric-icon{width:32px;height:32px}
+  .nav-button{font-size:9px}
+  .leg-passenger-pair .passenger-stepper.compact{grid-template-columns:44px minmax(56px,1fr) 44px 52px;gap:6px}
+}
+
+@media(max-height:520px) and (orientation:landscape){
+  .sidebar{height:56px}
+  .sidebar nav{padding-block:3px}
+  .nav-button{min-height:48px;flex-direction:row;font-size:10px}
+  .workspace{padding-bottom:calc(56px + env(safe-area-inset-bottom))}
+  .drive-action-panel{position:static}
+}
+
+@media(hover:none){
+  button:hover:not(:disabled){box-shadow:none;transform:none}
+  .button.primary:hover,.next-button:hover,.priority-action:hover{background:var(--deep);color:#fff}
+  .button.secondary:hover{border-color:var(--border);background:var(--surface);color:#31455a}
+  .nav-button:hover{color:#60707d;background:transparent}
+  .nav-button.active:hover{color:var(--accent);background:var(--accent-soft)}
+  .launch-operation-grid button:hover{border-color:#416179;color:#fff;background:#1a405e}
+  .launch-admin:hover{color:var(--deep);background:#fff}
+  .drive-run-card:hover{color:#fff;background:#123650}
+  .drive-run-card.active:hover{background:#123f59}
+  .drive-leg-switch button:hover{color:#c4d4e2;background:#12354f}
+  .drive-leg-switch button.active:hover{color:#071a2c;background:#36f9c7}
+}
+
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  button{transition:none}
+  .sazzad-card:hover{box-shadow:var(--shadow-sm)}
+}
