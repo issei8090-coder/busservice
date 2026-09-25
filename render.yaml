@@ -1,0 +1,27 @@
+# Render Blueprint 学校バス運行管理
+# 一般用 /、ダイヤ管理 /diagram、職員用 /staff を同じサービスで公開します。
+services:
+  - type: web
+    name: school-bus-go
+    runtime: docker
+    region: singapore
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: "8080"
+      # 運行実績を残すため、保存先は永続ディスク上へ置きます。
+      - key: DATA_FILE
+        value: /var/lib/school-bus/store.json
+      # 初回起動時だけ、イメージ同梱のダイヤを保存先へ複製します。
+      - key: SEED_FILE
+        value: /app/data/store.json
+      # 職員番号と暗証番号はRenderの管理画面から設定します。値はリポジトリへ置きません。
+      - key: APP_USERS
+        sync: false
+    disk:
+      name: school-bus-data
+      mountPath: /var/lib/school-bus
+      sizeGB: 1

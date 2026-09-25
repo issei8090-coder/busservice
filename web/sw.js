@@ -1,5 +1,6 @@
-const CACHE = "school-bus-v14";
-const STATIC = ["/", "/styles.css", "/enhancements.css", "/routes.css", "/mobile-redesign.css", "/ux-polish.css", "/app.js", "/routes.js", "/manifest.webmanifest", "/app-icon.svg"];
+const CACHE = "school-bus-v15";
+const SHELL = "/staff";
+const STATIC = [SHELL, "/styles.css", "/enhancements.css", "/routes.css", "/mobile-redesign.css", "/ux-polish.css", "/brand-theme.css", "/app.js", "/routes.js", "/manifest.webmanifest", "/app-icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(STATIC)).then(() => self.skipWaiting()));
@@ -14,11 +15,13 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.pathname.startsWith("/api/")) return;
   if (request.mode === "navigate") {
+    // 職員用だけをオフライン起動の対象にします。一般用とダイヤ管理は常に最新を取得します。
+    if (!url.pathname.startsWith("/staff")) return;
     event.respondWith(fetch(request).then((response) => {
       const copy = response.clone();
-      caches.open(CACHE).then((cache) => cache.put("/", copy));
+      caches.open(CACHE).then((cache) => cache.put(SHELL, copy));
       return response;
-    }).catch(() => caches.match("/")));
+    }).catch(() => caches.match(SHELL)));
     return;
   }
   event.respondWith(fetch(request).then((response) => {

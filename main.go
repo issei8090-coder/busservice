@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"embed"
 	"encoding/hex"
@@ -132,9 +133,21 @@ type Event struct {
 	CreatedAt string `json:"createdAt"`
 }
 
+// Program は文化祭などのステージ進行です。一般用でバスとの乗り継ぎ案内に使います。
+type Program struct {
+	ID      string `json:"id"`
+	Day     string `json:"day"`
+	Stage   string `json:"stage"`
+	Title   string `json:"title"`
+	Start   string `json:"start"`
+	End     string `json:"end"`
+	Details string `json:"details"`
+}
+
 type State struct {
 	Version           int                      `json:"version"`
 	Timetable         []Template               `json:"timetable"`
+	Programs          []Program                `json:"programs"`
 	Runs              map[string]*Run          `json:"runs"`
 	Events            []Event                  `json:"events"`
 	ProcessedRequests map[string]string        `json:"processedRequests,omitempty"`
@@ -1549,13 +1562,22 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "bus_session", Value: token, Path: "/", HttpOnly: true, Secure: r.TLS != nil, SameSite: http.SameSiteStrictMode, MaxAge: 12 * 60 * 60})
+	http.SetCookie(w, &http.Cookie{Name: "bus_session", Value: token, Path: "/", HttpOnly: true, Secure: requestIsSecure(r), SameSite: http.SameSiteStrictMode, MaxAge: 12 * 60 * 60})
 	writeJSON(w, 200, map[string]any{"user": user})
+}
+
+// requestIsSecure はRenderなどTLSを前段で終端する構成でもHTTPS接続を判定します。
+func requestIsSecure(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	proto := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-Proto"), ",")[0])
+	return strings.EqualFold(proto, "https")
 }
 
 func (a *App) logout(w http.ResponseWriter, r *http.Request) {
 	a.auth.logout(r)
-	http.SetCookie(w, &http.Cookie{Name: "bus_session", Value: "", Path: "/", HttpOnly: true, Secure: r.TLS != nil, SameSite: http.SameSiteStrictMode, MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: "bus_session", Value: "", Path: "/", HttpOnly: true, Secure: requestIsSecure(r), SameSite: http.SameSiteStrictMode, MaxAge: -1})
 	writeJSON(w, 200, map[string]bool{"ok": true})
 }
 
@@ -1917,6 +1939,7 @@ func main() {
 	dataPath := flag.String("data", envOr("DATA_FILE", "data/store.json"), "保存ファイル")
 	importPath := flag.String("import", "", "Excelを取り込んで終了")
 	flag.Parse()
+	ensureDataFile(*dataPath, envOr("SEED_FILE", "data/store.json"))
 	store, err := NewStore(*dataPath)
 	if err != nil {
 		log.Fatal(err)
@@ -1949,6 +1972,12 @@ func main() {
 	mux.Handle("POST /api/timetable/import", app.require("admin")(http.HandlerFunc(app.importTimetable)))
 	mux.Handle("GET /api/timetable", app.require("admin")(http.HandlerFunc(app.timetable)))
 	mux.Handle("PUT /api/timetable", app.require("admin")(http.HandlerFunc(app.timetable)))
+	mux.Handle("DELETE /api/timetable/{day}/{operation}/{column}", app.require("admin")(http.HandlerFunc(app.timetableEntry)))
+	mux.HandleFunc("GET /api/public/schedule", app.publicSchedule)
+	mux.HandleFunc("GET /api/public/programs", app.publicPrograms)
+	mux.Handle("GET /api/programs", app.require("admin", "driver", "viewer")(http.HandlerFunc(app.programs)))
+	mux.Handle("PUT /api/programs", app.require("admin")(http.HandlerFunc(app.programs)))
+	mux.Handle("DELETE /api/programs/{id}", app.require("admin")(http.HandlerFunc(app.programByID)))
 	mux.Handle("GET /api/settings", app.require("admin", "driver", "viewer")(http.HandlerFunc(app.settings)))
 	mux.Handle("PATCH /api/settings", app.require("admin")(http.HandlerFunc(app.settings)))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
@@ -1956,10 +1985,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	mux.Handle("/", http.FileServer(http.FS(staticFiles)))
+	mux.Handle("GET /{$}", pageHandler(staticFiles, "public.html"))
+	mux.Handle("GET /staff", pageHandler(staticFiles, "staff.html"))
+	mux.Handle("GET /staff/{$}", pageHandler(staticFiles, "staff.html"))
+	mux.Handle("GET /diagram", pageHandler(staticFiles, "diagram.html"))
+	mux.Handle("GET /program", pageHandler(staticFiles, "program.html"))
+	mux.Handle("GET /program/{$}", pageHandler(staticFiles, "program.html"))
+	mux.Handle("GET /diagram/{$}", pageHandler(staticFiles, "diagram.html"))
+	mux.HandleFunc("GET /index.html", redirectTo("/"))
+	mux.HandleFunc("GET /public.html", redirectTo("/"))
+	mux.HandleFunc("GET /staff.html", redirectTo("/staff"))
+	mux.HandleFunc("GET /diagram.html", redirectTo("/diagram"))
+	mux.HandleFunc("GET /program.html", redirectTo("/program"))
+	mux.Handle("/", staticHandler(staticFiles))
 	port := envOr("PORT", "8080")
 	server := &http.Server{Addr: ":" + port, Handler: securityHeaders(mux), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
-	log.Printf("学校バス運行管理を http://localhost:%s で開始", port)
+	log.Printf("一般用 http://localhost:%s/ 、ダイヤ管理 /diagram 、職員用 /staff で開始", port)
 	log.Fatal(server.ListenAndServe())
 }
 
@@ -1968,4 +2009,386 @@ func envOr(name, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func routeStops(route string) []string {
+	stops := make([]string, 0, 4)
+	for _, part := range strings.Split(route, "→") {
+		name := strings.TrimSpace(part)
+		if name == "" || name == "学校" {
+			continue
+		}
+		known := false
+		for _, existing := range stops {
+			if existing == name {
+				known = true
+				break
+			}
+		}
+		if !known {
+			stops = append(stops, name)
+		}
+	}
+	return stops
+}
+
+type PublicEntry struct {
+	OperationNo      int      `json:"operationNo"`
+	ColumnNo         int      `json:"columnNo"`
+	Route            string   `json:"route"`
+	Stops            []string `json:"stops"`
+	SchoolDeparture  string   `json:"schoolDeparture"`
+	StationArrival   string   `json:"stationArrival"`
+	StationDeparture string   `json:"stationDeparture"`
+	SchoolArrival    string   `json:"schoolArrival"`
+	OutboundType     string   `json:"outboundType"`
+	InboundType      string   `json:"inboundType"`
+	Details          string   `json:"details"`
+	Status           string   `json:"status"`
+	DelayMinutes     *int     `json:"delayMinutes"`
+}
+
+// publicSchedule は一般公開用の時刻だけを読み取り専用で返します。
+// 乗車人数、担当者、車両番号、GPS位置は公開しません。
+func (s *Store) publicSchedule(date, day string) []PublicEntry {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	entries := make([]PublicEntry, 0, len(s.state.Timetable))
+	for _, t := range s.state.Timetable {
+		if t.Day != day {
+			continue
+		}
+		entry := PublicEntry{
+			OperationNo:      t.OperationNo,
+			ColumnNo:         t.ColumnNo,
+			Route:            t.Route,
+			Stops:            routeStops(t.Route),
+			SchoolDeparture:  fallback(t.OutboundDeparture, t.PlannedDeparture),
+			StationArrival:   t.OutboundArrival,
+			StationDeparture: t.InboundDeparture,
+			SchoolArrival:    fallback(t.InboundArrival, t.PlannedArrival),
+			OutboundType:     t.OutboundType,
+			InboundType:      t.InboundType,
+			Details:          t.Details,
+		}
+		if date != "" {
+			if run, ok := s.state.Runs[runID(date, day, t.OperationNo, t.ColumnNo)]; ok {
+				entry.Status = run.Status
+				delay := run.DepartureDelayMinutes
+				if delay == nil {
+					delay = run.ArrivalDelayMinutes
+				}
+				if delay != nil && *delay > 0 {
+					value := *delay
+					entry.DelayMinutes = &value
+				}
+			}
+		}
+		entries = append(entries, entry)
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		a, aOK := clockMinutes(entries[i].SchoolDeparture)
+		b, bOK := clockMinutes(entries[j].SchoolDeparture)
+		if aOK != bOK {
+			return aOK
+		}
+		if aOK && bOK && a != b {
+			return a < b
+		}
+		if entries[i].OperationNo != entries[j].OperationNo {
+			return entries[i].OperationNo < entries[j].OperationNo
+		}
+		return entries[i].ColumnNo < entries[j].ColumnNo
+	})
+	return entries
+}
+
+func (s *Store) deleteTemplate(day string, operation, column int) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	index := -1
+	for position, item := range s.state.Timetable {
+		if item.Day == day && item.OperationNo == operation && item.ColumnNo == column {
+			index = position
+			break
+		}
+	}
+	if index < 0 {
+		return 0, errors.New("削除する便が見つかりません")
+	}
+	s.state.Timetable = append(s.state.Timetable[:index], s.state.Timetable[index+1:]...)
+	removed := 0
+	for id, run := range s.state.Runs {
+		if run.Day != day || run.OperationNo != operation || run.ColumnNo != column {
+			continue
+		}
+		if run.Status != "waiting" || run.PassengerCount > 0 || run.OutboundPassengerCount > 0 || run.InboundPassengerCount > 0 {
+			continue
+		}
+		if run.ActualDeparture != "" || run.ActualArrival != "" || run.Note != "" {
+			continue
+		}
+		delete(s.state.Runs, id)
+		removed++
+	}
+	s.addEventLocked("", "timetable-delete", fmt.Sprintf("%s 運用%d 便%dの元ダイヤを削除。未記録の運行%d件も削除", day, operation, column, removed))
+	if err := s.saveLocked(); err != nil {
+		return 0, err
+	}
+	return removed, nil
+}
+
+func (a *App) publicSchedule(w http.ResponseWriter, r *http.Request) {
+	date := strings.TrimSpace(r.URL.Query().Get("date"))
+	day := strings.TrimSpace(r.URL.Query().Get("day"))
+	if date != "" {
+		parsed, err := time.ParseInLocation("2006-01-02", date, jst)
+		if err != nil {
+			writeJSON(w, 400, map[string]string{"error": "日付が正しくありません"})
+			return
+		}
+		if day == "" {
+			switch parsed.Weekday() {
+			case time.Sunday:
+				day = "日曜"
+			default:
+				day = "土曜"
+			}
+		}
+	}
+	if day != "土曜" && day != "日曜" {
+		writeJSON(w, 400, map[string]string{"error": "曜日が正しくありません"})
+		return
+	}
+	entries := a.store.publicSchedule(date, day)
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, 200, map[string]any{
+		"date":      date,
+		"day":       day,
+		"entries":   entries,
+		"count":     len(entries),
+		"updatedAt": time.Now().In(jst).Format(time.RFC3339),
+	})
+}
+
+func (a *App) timetableEntry(w http.ResponseWriter, r *http.Request) {
+	day := r.PathValue("day")
+	operation, errOperation := strconv.Atoi(r.PathValue("operation"))
+	column, errColumn := strconv.Atoi(r.PathValue("column"))
+	if (day != "土曜" && day != "日曜") || errOperation != nil || errColumn != nil {
+		writeJSON(w, 400, map[string]string{"error": "削除対象が正しくありません"})
+		return
+	}
+	removed, err := a.store.deleteTemplate(day, operation, column)
+	if err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]any{"ok": true, "removedRuns": removed})
+}
+
+func pageHandler(files fs.FS, name string) http.HandlerFunc {
+	body, err := fs.ReadFile(files, name)
+	if err != nil {
+		log.Fatalf("%sを読めません: %v", name, err)
+	}
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = w.Write(body)
+	}
+}
+
+func redirectTo(target string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
+	}
+}
+
+// ensureDataFile は保存先が空の環境へ初回だけ同梱ダイヤを複製します。
+func ensureDataFile(dataPath, seedPath string) {
+	if seedPath == "" || seedPath == dataPath {
+		return
+	}
+	if _, err := os.Stat(dataPath); err == nil {
+		return
+	}
+	body, err := os.ReadFile(seedPath)
+	if err != nil {
+		return
+	}
+	if err := os.MkdirAll(path.Dir(dataPath), 0o755); err != nil {
+		log.Printf("保存先を作成できません: %v", err)
+		return
+	}
+	if err := os.WriteFile(dataPath, body, 0o644); err != nil {
+		log.Printf("初期ダイヤを配置できません: %v", err)
+		return
+	}
+	log.Printf("初期ダイヤを %s へ配置しました", dataPath)
+}
+
+// staticHandler は内容に基づくETagを付け、更新した画面が確実に読み込まれるようにします。
+func staticHandler(files fs.FS) http.Handler {
+	tags := map[string]string{}
+	_ = fs.WalkDir(files, ".", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return nil
+		}
+		body, readErr := fs.ReadFile(files, name)
+		if readErr != nil {
+			return nil
+		}
+		sum := sha256.Sum256(body)
+		tags["/"+name] = "\"" + hex.EncodeToString(sum[:8]) + "\""
+		return nil
+	})
+	fileServer := http.FileServer(http.FS(files))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if tag, ok := tags[r.URL.Path]; ok {
+			w.Header().Set("ETag", tag)
+			w.Header().Set("Cache-Control", "no-cache")
+			if r.Header.Get("If-None-Match") == tag {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+		}
+		fileServer.ServeHTTP(w, r)
+	})
+}
+
+func sortPrograms(items []Program) {
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Day != items[j].Day {
+			return items[i].Day > items[j].Day
+		}
+		a, aOK := clockMinutes(items[i].Start)
+		b, bOK := clockMinutes(items[j].Start)
+		if aOK && bOK && a != b {
+			return a < b
+		}
+		if items[i].Stage != items[j].Stage {
+			return items[i].Stage < items[j].Stage
+		}
+		return items[i].Title < items[j].Title
+	})
+}
+
+func (s *Store) listPrograms(day string) []Program {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	items := make([]Program, 0, len(s.state.Programs))
+	for _, item := range s.state.Programs {
+		if day != "" && item.Day != day {
+			continue
+		}
+		items = append(items, item)
+	}
+	sortPrograms(items)
+	return items
+}
+
+func (s *Store) saveProgram(input Program) (*Program, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	input.Day = clean(input.Day, 10)
+	input.Stage = clean(input.Stage, 40)
+	input.Title = clean(input.Title, 80)
+	input.Start = clean(input.Start, 5)
+	input.End = clean(input.End, 5)
+	input.Details = clean(input.Details, 1000)
+	if input.Day != "土曜" && input.Day != "日曜" {
+		return nil, errors.New("曜日が正しくありません")
+	}
+	if input.Stage == "" {
+		return nil, errors.New("会場を入力してください")
+	}
+	if input.Title == "" {
+		return nil, errors.New("内容を入力してください")
+	}
+	start, ok := clockMinutes(input.Start)
+	if !ok {
+		return nil, errors.New("開始時刻を24時間表記で入力してください")
+	}
+	if !validClock(input.End) {
+		return nil, errors.New("終了時刻を24時間表記で入力してください")
+	}
+	if end, valid := clockMinutes(input.End); valid && end <= start {
+		return nil, errors.New("終了は開始より後にしてください")
+	}
+	if input.ID == "" {
+		input.ID = randomID()
+		s.state.Programs = append(s.state.Programs, input)
+	} else {
+		found := false
+		for index := range s.state.Programs {
+			if s.state.Programs[index].ID == input.ID {
+				s.state.Programs[index] = input
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.state.Programs = append(s.state.Programs, input)
+		}
+	}
+	s.addEventLocked("", "program-edit", fmt.Sprintf("%s %s %sの進行を保存", input.Day, input.Stage, input.Title))
+	if err := s.saveLocked(); err != nil {
+		return nil, err
+	}
+	saved := input
+	return &saved, nil
+}
+
+func (s *Store) deleteProgram(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for index, item := range s.state.Programs {
+		if item.ID != id {
+			continue
+		}
+		s.state.Programs = append(s.state.Programs[:index], s.state.Programs[index+1:]...)
+		s.addEventLocked("", "program-delete", fmt.Sprintf("%s %s %sの進行を削除", item.Day, item.Stage, item.Title))
+		return s.saveLocked()
+	}
+	return errors.New("削除する進行が見つかりません")
+}
+
+func (a *App) programs(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		writeJSON(w, 200, map[string]any{"programs": a.store.listPrograms(strings.TrimSpace(r.URL.Query().Get("day")))})
+		return
+	}
+	if r.Method == http.MethodPut {
+		var input Program
+		if !decodeJSON(w, r, &input) {
+			return
+		}
+		saved, err := a.store.saveProgram(input)
+		if err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 200, saved)
+		return
+	}
+	http.NotFound(w, r)
+}
+
+func (a *App) programByID(w http.ResponseWriter, r *http.Request) {
+	if err := a.store.deleteProgram(r.PathValue("id")); err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]bool{"ok": true})
+}
+
+func (a *App) publicPrograms(w http.ResponseWriter, r *http.Request) {
+	day := strings.TrimSpace(r.URL.Query().Get("day"))
+	if day != "土曜" && day != "日曜" {
+		writeJSON(w, 400, map[string]string{"error": "曜日が正しくありません"})
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, 200, map[string]any{"day": day, "programs": a.store.listPrograms(day)})
 }

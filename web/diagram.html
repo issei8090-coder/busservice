@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="robots" content="noindex">
+  <title>ダイヤ管理 | JOHOKU SAITAMA BUS</title>
+  <link rel="icon" href="/app-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/diagram.css">
+</head>
+<body>
+  <section class="login-gate" id="loginGate" aria-labelledby="loginHeading">
+    <form class="login-panel" id="loginForm">
+      <img src="/assets/brand/bus-side-line-livery-v2.png" alt="" aria-hidden="true">
+      <span class="kicker">JOHOKU SAITAMA · TIMETABLE</span>
+      <h1 id="loginHeading">ダイヤ管理ログイン</h1>
+      <p>ダイヤの変更は管理者権限で行います。</p>
+      <div class="form-error" id="loginError" role="alert" tabindex="-1" hidden></div>
+      <label><span>職員番号</span><input id="loginStaffId" autocomplete="username" required></label>
+      <label><span>暗証番号</span><input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" minlength="4" required></label>
+      <button class="button primary" type="submit" id="loginSubmit">ログイン</button>
+      <small>一般用の時刻案内はログインなしで <a href="/">こちら</a> から確認できます。</small>
+    </form>
+  </section>
+
+  <div id="workspace" hidden>
+    <header class="admin-header">
+      <div class="admin-header-inner">
+        <div class="admin-mark">
+          <img src="/assets/brand/bus-front-line-livery.png" alt="" aria-hidden="true">
+          <div><strong>JOHOKU SAITAMA</strong><span>ダイヤ管理</span></div>
+        </div>
+        <a class="header-link" href="/" target="_blank" rel="noopener">一般用を確認</a>
+        <a class="header-link" href="/program">ステージプログラム</a>
+        <a class="header-link" href="/staff">職員用</a>
+        <div class="header-user"><span id="currentUser"></span><button type="button" class="button" id="logoutButton">終了</button></div>
+      </div>
+    </header>
+
+    <main>
+      <div class="page-intro">
+        <div>
+          <h1>元ダイヤの登録と変更</h1>
+          <p>ここで保存した内容が一般用の時刻案内と当日運行にそのまま反映されます。</p>
+        </div>
+      </div>
+
+      <section class="metrics" aria-label="登録状況">
+        <article class="metric"><small>登録便数</small><strong id="metricTotal">0</strong><span>便</span></article>
+        <article class="metric"><small>土曜ダイヤ</small><strong id="metricSaturday">0</strong><span>便</span></article>
+        <article class="metric"><small>日曜ダイヤ</small><strong id="metricSunday">0</strong><span>便</span></article>
+        <article class="metric" id="metricIncompleteCard"><small>駅時刻が未入力</small><strong id="metricIncomplete">0</strong><span>便</span></article>
+      </section>
+
+      <section class="panel" aria-labelledby="checkHeading">
+        <div class="panel-heading">
+          <h2 id="checkHeading">保存前の確認事項</h2>
+          <p>重複、時刻の前後関係、一般用で空欄になる項目を一覧にします。</p>
+        </div>
+        <div class="panel-body">
+          <ul class="check-list" id="checkList"></ul>
+        </div>
+      </section>
+
+      <div class="editor">
+        <aside class="list-panel" aria-label="便の一覧">
+          <div class="list-tools">
+            <div class="segmented" id="listDaySwitch" role="group" aria-label="曜日">
+              <button type="button" data-day="土曜" aria-pressed="true">土曜</button>
+              <button type="button" data-day="日曜" aria-pressed="false">日曜</button>
+            </div>
+            <select id="listOperationFilter" aria-label="運用番号"></select>
+            <input id="listSearch" type="search" placeholder="時刻や経路で絞り込み" aria-label="便を絞り込み">
+          </div>
+          <div class="run-list" id="runList"></div>
+          <div class="list-foot"><button type="button" class="button" id="newTemplateButton">新しい便を追加</button></div>
+        </aside>
+
+        <section class="form-panel" aria-labelledby="formHeading">
+          <div class="panel-heading">
+            <h2 id="formHeading">便の内容</h2>
+            <p id="formSubtitle">左の一覧から便を選ぶか、新しい便を追加してください。</p>
+          </div>
+          <form id="templateForm">
+            <div class="form-error" id="formError" role="alert" tabindex="-1" hidden></div>
+            <div class="form-grid">
+              <label><span class="field-label">曜日</span><select id="fieldDay"><option>土曜</option><option>日曜</option></select></label>
+              <label><span class="field-label">運用番号</span><input id="fieldOperation" type="number" min="1" max="9" required></label>
+              <label><span class="field-label">便番号</span><input id="fieldColumn" type="number" min="1" max="99" required></label>
+              <label><span class="field-label">一周の出発</span><input id="fieldPlannedDeparture" type="time" required></label>
+              <label><span class="field-label">一周の帰着</span><input id="fieldPlannedArrival" type="time" required></label>
+              <label class="full"><span class="field-label">全体経路</span><input id="fieldRoute" type="text" maxlength="200" placeholder="学校 → ふじみ野 → 学校" required></label>
+            </div>
+            <div class="leg-grid">
+              <fieldset>
+                <legend>往路 学校発</legend>
+                <label><span class="field-label">便種別</span><select id="fieldOutboundType"><option value="passenger">通常便</option><option value="deadhead">回送</option><option value="group">団体専用</option><option value="none">運行なし</option></select></label>
+                <label><span class="field-label">学校発</span><input id="fieldOutboundDeparture" type="time"></label>
+                <label><span class="field-label">駅着</span><input id="fieldOutboundArrival" type="time"></label>
+              </fieldset>
+              <fieldset>
+                <legend>復路 学校着</legend>
+                <label><span class="field-label">便種別</span><select id="fieldInboundType"><option value="passenger">通常便</option><option value="deadhead">回送</option><option value="group">団体専用</option><option value="none">運行なし</option></select></label>
+                <label><span class="field-label">駅発</span><input id="fieldInboundDeparture" type="time"></label>
+                <label><span class="field-label">学校着</span><input id="fieldInboundArrival" type="time"></label>
+              </fieldset>
+            </div>
+            <label style="display:block;margin-top:14px"><span class="field-label">詳細情報</span><textarea id="fieldDetails" maxlength="500" placeholder="団体名、回送理由、乗車条件、注意事項など"></textarea></label>
+
+            <div class="preview" aria-live="polite">
+              <h3>一般用の時刻案内での表示</h3>
+              <div class="preview-times">
+                <div><small>学校発</small><strong id="previewSchoolDeparture">—</strong></div>
+                <div><small>駅着</small><strong id="previewStationArrival">—</strong></div>
+                <div><small>駅発</small><strong id="previewStationDeparture">—</strong></div>
+                <div><small>学校着</small><strong id="previewSchoolArrival">—</strong></div>
+              </div>
+              <p id="previewNote"></p>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="button primary" id="saveButton">この便を保存</button>
+              <button type="button" class="button" id="copyDayButton">もう一方の曜日へ複製</button>
+              <span class="spacer"></span>
+              <button type="button" class="button danger" id="deleteButton" hidden>この便を削除</button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <details class="panel import-panel">
+        <summary>Excelからダイヤをまとめて取り込む</summary>
+        <div class="panel-body">
+          <div class="import-row">
+            <input id="excelFile" type="file" accept=".xlsx" aria-label="Excelファイル">
+            <button type="button" class="button primary" id="importButton" disabled>取り込む</button>
+          </div>
+          <p class="import-note">「運用1_土曜」から「運用9_日曜」までの18表を読み込みます。取り込むと元ダイヤ全体が置き換わり、当日の人数と実績は残ります。取り込み後は駅着と駅発が空欄になるため、この画面で補完してください。</p>
+        </div>
+      </details>
+    </main>
+  </div>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+  <script src="/diagram.js" defer></script>
+</body>
+</html>

@@ -244,3 +244,12 @@ dialog::backdrop{background:rgba(14,19,27,.45);backdrop-filter:blur(4px)}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+/* 画面間の移動 一般用とダイヤ管理 */
+.sidebar-links{display:grid;gap:6px;margin:auto 12px 10px}
+.sidebar-links a{
+  display:block;padding:9px 12px;border:1px solid var(--stroke);border-radius:10px;
+  color:var(--ink-soft);font-size:12px;font-weight:700;text-decoration:none;
+}
+.sidebar-links a:hover{border-color:var(--brand);color:var(--brand-strong);background:var(--brand-soft)}
+@media (max-width:900px){.sidebar-links{display:none}}

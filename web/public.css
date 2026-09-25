@@ -1,0 +1,160 @@
+/* スクールバス時刻案内 ソフトUI */
+:root{
+  color-scheme:light;
+  --bg:#e0e0e0;
+  --shadow-dark:#bebebe;
+  --shadow-light:#ffffff;
+  --ink:#3a3d42;
+  --ink-strong:#23262a;
+  --ink-soft:#80858c;
+  --accent:#4a6b8a;
+  --stop:#a8413a;
+  --warn:#8a6216;
+  --go:#3f6b4a;
+  --radius:26px;
+  --radius-small:18px;
+  --raise:6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+  --raise-soft:4px 4px 9px var(--shadow-dark), -4px -4px 9px var(--shadow-light);
+  --press:inset 4px 4px 9px var(--shadow-dark), inset -4px -4px 9px var(--shadow-light);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  padding-bottom:96px;
+  color:var(--ink);
+  background:var(--bg);
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,-apple-system,sans-serif;
+  font-size:16px;
+  line-height:1.6;
+}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{left:16px;top:16px;z-index:30;padding:10px 16px;border-radius:12px;background:var(--bg);box-shadow:var(--raise)}
+
+.wrap{max-width:720px;margin:0 auto;padding:22px 18px 8px}
+
+.masthead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.masthead h1{margin:0;color:var(--ink-strong);font-size:20px;font-weight:700;letter-spacing:.02em}
+.masthead p{margin:2px 0 0;color:var(--ink-soft);font-size:13px}
+.masthead .staff-link{
+  flex:none;padding:9px 14px;border-radius:14px;color:var(--ink-soft);
+  font-size:12px;font-weight:600;text-decoration:none;box-shadow:var(--raise-soft);
+}
+.masthead .staff-link:active{box-shadow:var(--press)}
+
+.search-row{
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:0 18px;
+  border-radius:var(--radius-small);box-shadow:var(--press);
+}
+.search-row svg{
+  flex:none;width:18px;height:18px;fill:none;stroke:var(--ink-soft);
+  stroke-width:1.8;stroke-linecap:round;
+}
+.search-row input{
+  flex:1;min-width:0;min-height:52px;padding:0;border:0;background:transparent;
+  color:var(--ink-strong);font-size:16px;
+}
+.search-row input::placeholder{color:var(--ink-soft)}
+.search-row input:focus{outline:none}
+.search-row:focus-within{box-shadow:var(--press), 0 0 0 2px rgba(74,107,138,.25)}
+
+.day-switch{display:flex;gap:10px;margin-bottom:14px}
+.day-switch button{
+  flex:1;min-height:50px;border-radius:var(--radius-small);
+  color:var(--ink-soft);font-size:15px;font-weight:700;box-shadow:var(--raise);
+}
+.day-switch button[aria-pressed="true"]{color:var(--ink-strong);box-shadow:var(--press)}
+
+.stop-switch{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.stop-switch button{
+  min-height:42px;padding:0 16px;border-radius:14px;
+  color:var(--ink-soft);font-size:14px;font-weight:600;box-shadow:var(--raise-soft);
+}
+.stop-switch button[aria-pressed="true"]{color:var(--ink-strong);box-shadow:var(--press)}
+
+.section-title{display:flex;align-items:baseline;gap:10px;margin:0 4px 12px}
+.section-title h2{margin:0;color:var(--ink-strong);font-size:17px;font-weight:700}
+.section-title span{color:var(--ink-soft);font-size:13px}
+
+.list{display:grid;gap:14px;margin:0;padding:0;list-style:none}
+.row{
+  display:flex;align-items:center;gap:16px;padding:18px 20px;
+  border-radius:var(--radius);background:var(--bg);box-shadow:var(--raise);
+}
+.row .time{flex:none;min-width:88px}
+.row .time strong{
+  display:block;color:var(--ink-strong);font-size:27px;font-weight:700;
+  font-variant-numeric:tabular-nums;letter-spacing:.01em;line-height:1.15;
+}
+.row .time small{display:block;color:var(--ink-soft);font-size:11px;font-weight:600;letter-spacing:.08em}
+.row .body{flex:1;min-width:0}
+.row .body strong{display:block;color:var(--ink-strong);font-size:16px;font-weight:700}
+.row .body span{display:block;margin-top:2px;color:var(--ink-soft);font-size:13px}
+.row .mark{flex:none;font-size:12px;font-weight:700;letter-spacing:.04em}
+.row .mark.stop{color:var(--stop)}
+.row .mark.warn{color:var(--warn)}
+.row .mark.go{color:var(--go)}
+
+.row.next{box-shadow:var(--raise), 0 0 0 2px rgba(74,107,138,.22)}
+.row.next .time small{color:var(--accent)}
+.row.past{opacity:.5}
+.row.cancelled .time strong{color:var(--stop);text-decoration:line-through}
+
+.card{
+  padding:20px 22px;border-radius:var(--radius);background:var(--bg);box-shadow:var(--raise);
+}
+.card+.card{margin-top:14px}
+.card h2{margin:0 0 6px;color:var(--ink-strong);font-size:16px;font-weight:700}
+.card p{margin:0;color:var(--ink);font-size:14px}
+.card ul{margin:10px 0 0;padding-left:20px;color:var(--ink);font-size:14px}
+.card li+li{margin-top:6px}
+.card.stop h2{color:var(--stop)}
+.card.warn h2{color:var(--warn)}
+.card.go h2{color:var(--go)}
+
+.empty{padding:34px 20px;border-radius:var(--radius);background:var(--bg);box-shadow:var(--press);color:var(--ink-soft);font-size:14px;text-align:center}
+.note{margin:18px 4px 0;color:var(--ink-soft);font-size:12px}
+
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
+  display:flex;gap:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  background:var(--bg);box-shadow:0 -8px 20px rgba(190,190,190,.55);
+}
+.tabbar button{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-height:58px;padding:8px 4px;border-radius:var(--radius-small);
+  color:var(--ink-soft);font-size:12px;font-weight:700;box-shadow:var(--raise-soft);
+}
+.tabbar button[aria-pressed="true"]{color:var(--ink-strong);box-shadow:var(--press)}
+.tabbar svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+@media (max-width:420px){
+  .wrap{padding:18px 14px 8px}
+  .row{gap:12px;padding:16px}
+  .row .time{min-width:78px}
+  .row .time strong{font-size:24px}
+}
+
+@media print{
+  body{padding-bottom:0;background:#fff}
+  .tabbar,.day-switch,.stop-switch,.staff-link,.note{display:none}
+  .row,.card{box-shadow:none;border-bottom:1px solid #ccc;border-radius:0;padding:8px 0}
+}
+
+/* イベントと乗り継ぎ案内 */
+.row.program{align-items:flex-start}
+.row.program .time strong{font-size:22px}
+.row.program .body p{margin:8px 0 0;color:var(--ink);font-size:13px;white-space:pre-line}
+.bus-hint{
+  display:grid;gap:6px;margin-top:12px;padding:12px 14px;
+  border-radius:var(--radius-small);box-shadow:var(--press);
+}
+.bus-hint div{display:flex;gap:10px;align-items:baseline;font-size:13px;color:var(--ink)}
+.bus-hint small{flex:none;width:34px;color:var(--ink-soft);font-size:11px;font-weight:700;letter-spacing:.06em}
+.bus-hint b{color:var(--ink-strong);font-size:15px;font-variant-numeric:tabular-nums;font-weight:700}
+.bus-hint .none{color:var(--ink-soft)}

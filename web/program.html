@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="robots" content="noindex">
+  <title>ステージプログラム管理 | JOHOKU SAITAMA BUS</title>
+  <link rel="icon" href="/app-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/diagram.css">
+</head>
+<body>
+  <section class="login-gate" id="loginGate" aria-labelledby="loginHeading">
+    <form class="login-panel" id="loginForm">
+      <img src="/assets/brand/bus-side-line-livery-v2.png" alt="" aria-hidden="true">
+      <span class="kicker">JOHOKU SAITAMA · STAGE PROGRAM</span>
+      <h1 id="loginHeading">プログラム管理ログイン</h1>
+      <p>ステージ進行の登録は管理者権限で行います。</p>
+      <div class="form-error" id="loginError" role="alert" tabindex="-1" hidden></div>
+      <label><span>職員番号</span><input id="loginStaffId" autocomplete="username" required></label>
+      <label><span>暗証番号</span><input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" minlength="4" required></label>
+      <button class="button primary" type="submit" id="loginSubmit">ログイン</button>
+      <small>一般用の案内は <a href="/">こちら</a> から確認できます。</small>
+    </form>
+  </section>
+
+  <div id="workspace" hidden>
+    <header class="admin-header">
+      <div class="admin-header-inner">
+        <div class="admin-mark">
+          <img src="/assets/brand/bus-front-line-livery.png" alt="" aria-hidden="true">
+          <div><strong>JOHOKU SAITAMA</strong><span>ステージプログラム管理</span></div>
+        </div>
+        <a class="header-link" href="/?tab=event" target="_blank" rel="noopener">一般用を確認</a>
+        <a class="header-link" href="/diagram">ダイヤ管理</a>
+        <a class="header-link" href="/staff">職員用</a>
+        <div class="header-user"><span id="currentUser"></span><button type="button" class="button" id="logoutButton">終了</button></div>
+      </div>
+    </header>
+
+    <main>
+      <div class="page-intro">
+        <div>
+          <h1>ステージ進行の登録</h1>
+          <p>登録した進行は一般用の「イベント」に表示され、開始時刻に間に合うバスを自動で案内します。</p>
+        </div>
+      </div>
+
+      <section class="metrics" aria-label="登録状況">
+        <article class="metric"><small>登録件数</small><strong id="metricTotal">0</strong><span>件</span></article>
+        <article class="metric"><small>土曜</small><strong id="metricSaturday">0</strong><span>件</span></article>
+        <article class="metric"><small>日曜</small><strong id="metricSunday">0</strong><span>件</span></article>
+        <article class="metric" id="metricBusCard"><small>間に合うバスがない進行</small><strong id="metricNoBus">0</strong><span>件</span></article>
+      </section>
+
+      <div class="editor">
+        <aside class="list-panel" aria-label="進行の一覧">
+          <div class="list-tools">
+            <div class="segmented" id="listDaySwitch" role="group" aria-label="曜日">
+              <button type="button" data-day="土曜" aria-pressed="true">土曜</button>
+              <button type="button" data-day="日曜" aria-pressed="false">日曜</button>
+            </div>
+            <input id="listSearch" type="search" placeholder="会場や内容で絞り込み" aria-label="進行を絞り込み">
+          </div>
+          <div class="run-list" id="programList"></div>
+          <div class="list-foot"><button type="button" class="button" id="newProgramButton">新しい進行を追加</button></div>
+        </aside>
+
+        <section class="form-panel" aria-labelledby="formHeading">
+          <div class="panel-heading">
+            <h2 id="formHeading">進行の内容</h2>
+            <p id="formSubtitle">左の一覧から選ぶか、新しい進行を追加してください。</p>
+          </div>
+          <form id="programForm">
+            <div class="form-error" id="formError" role="alert" tabindex="-1" hidden></div>
+            <input type="hidden" id="fieldId">
+            <div class="form-grid">
+              <label><span class="field-label">曜日</span><select id="fieldDay"><option>土曜</option><option>日曜</option></select></label>
+              <label><span class="field-label">会場</span><input id="fieldStage" type="text" list="stageOptions" maxlength="40" placeholder="体育館ステージ" required></label>
+              <label><span class="field-label">開始</span><input id="fieldStart" type="time" required></label>
+              <label><span class="field-label">終了</span><input id="fieldEnd" type="time"></label>
+              <label class="full"><span class="field-label">内容</span><input id="fieldTitle" type="text" maxlength="80" placeholder="書道部パフォーマンス" required></label>
+            </div>
+            <datalist id="stageOptions">
+              <option value="体育館ステージ"></option>
+              <option value="特設ステージ"></option>
+            </datalist>
+            <label style="display:block;margin-top:14px"><span class="field-label">詳細</span><textarea id="fieldDetails" maxlength="1000" placeholder="出演団体、雨天時の案内、注意事項など"></textarea></label>
+
+            <div class="preview" aria-live="polite">
+              <h3>一般用での「間に合うバス」</h3>
+              <div id="previewBuses" class="preview-times"></div>
+              <p id="previewNote"></p>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="button primary" id="saveButton">この進行を保存</button>
+              <button type="button" class="button" id="copyDayButton">もう一方の曜日へ複製</button>
+              <span class="spacer"></span>
+              <button type="button" class="button danger" id="deleteButton" hidden>この進行を削除</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+  <script src="/program.js" defer></script>
+</body>
+</html>
