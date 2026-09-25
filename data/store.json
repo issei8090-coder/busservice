@@ -3602,6 +3602,78 @@
   "settings": {
     "schoolLatitude": 0,
     "schoolLongitude": 0,
-    "schoolRadius": 35
-  }
+    "schoolRadius": 35,
+    "eventName": "",
+    "eventSaturday": "",
+    "eventSunday": ""
+  },
+  "stops": [
+    {
+      "id": "a63575c3b66d33f1",
+      "name": "ふじみ野",
+      "line": "東武東上線",
+      "place": "",
+      "landmark": "",
+      "walkMinutes": 0,
+      "latitude": 0,
+      "longitude": 0,
+      "order": 1
+    },
+    {
+      "id": "e3702fb3a51e718f",
+      "name": "南古谷",
+      "line": "JR川越線",
+      "place": "",
+      "landmark": "",
+      "walkMinutes": 0,
+      "latitude": 0,
+      "longitude": 0,
+      "order": 2
+    },
+    {
+      "id": "54f872d11c6a490e",
+      "name": "本川越",
+      "line": "西武新宿線",
+      "place": "",
+      "landmark": "",
+      "walkMinutes": 0,
+      "latitude": 0,
+      "longitude": 0,
+      "order": 3
+    }
+  ],
+  "legs": [
+    {
+      "from": "学校",
+      "to": "ふじみ野",
+      "minutes": 15
+    },
+    {
+      "from": "学校",
+      "to": "南古谷",
+      "minutes": 10
+    },
+    {
+      "from": "学校",
+      "to": "本川越",
+      "minutes": 25
+    },
+    {
+      "from": "南古谷",
+      "to": "本川越",
+      "minutes": 20
+    }
+  ],
+  "notices": null,
+  "crowdHints": null,
+  "searchSignals": [
+    {
+      "date": "2026-09-25",
+      "direction": "inbound",
+      "stop": "ふじみ野",
+      "slot": "09:00",
+      "count": 1
+    }
+  ],
+  "lineStatuses": null
 }

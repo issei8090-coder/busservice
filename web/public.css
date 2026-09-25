@@ -1,160 +1,230 @@
-/* スクールバス時刻案内 ソフトUI */
+/* スクールバスのご案内。来場者向けの一般用画面です。 */
 :root{
   color-scheme:light;
-  --bg:#e0e0e0;
-  --shadow-dark:#bebebe;
-  --shadow-light:#ffffff;
-  --ink:#3a3d42;
-  --ink-strong:#23262a;
-  --ink-soft:#80858c;
-  --accent:#4a6b8a;
-  --stop:#a8413a;
-  --warn:#8a6216;
-  --go:#3f6b4a;
-  --radius:26px;
-  --radius-small:18px;
-  --raise:6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
-  --raise-soft:4px 4px 9px var(--shadow-dark), -4px -4px 9px var(--shadow-light);
-  --press:inset 4px 4px 9px var(--shadow-dark), inset -4px -4px 9px var(--shadow-light);
+  --bg:#eceef1;
+  --surface:#fff;
+  --surface-sub:#f5f6f8;
+  --line:#e6e8ec;
+  --line-strong:#d3d7de;
+  --ink:#14161a;
+  --ink-mid:#5b616e;
+  --ink-soft:#6f7480;
+  --accent:#0866e5;
+  --accent-deep:#0052c8;
+  --accent-tint:#eff5ff;
+  --stop:#c3271f;
+  --stop-tint:#fdeff0;
+  --warn:#a35f00;
+  --warn-tint:#fdf4e6;
+  --go:#077c45;
+  --go-tint:#ecf7f1;
+  --gutter:16px;
 }
 
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{
-  margin:0;
-  padding-bottom:96px;
-  color:var(--ink);
-  background:var(--bg);
-  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,-apple-system,sans-serif;
-  font-size:16px;
-  line-height:1.6;
+  margin:0;padding-bottom:40px;
+  color:var(--ink);background:var(--bg);
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",Meiryo,sans-serif;
+  font-size:15px;line-height:1.65;
+  font-feature-settings:"palt" 1;
+  letter-spacing:.01em;
+  -webkit-font-smoothing:antialiased;
 }
-button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
-:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;letter-spacing:inherit}
+a{color:var(--accent)}
+h1,h2,h3{font-weight:700}
+:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"palt" 0;letter-spacing:0}
 
 .skip-link{position:absolute;left:-9999px}
-.skip-link:focus{left:16px;top:16px;z-index:30;padding:10px 16px;border-radius:12px;background:var(--bg);box-shadow:var(--raise)}
+.skip-link:focus{left:12px;top:12px;z-index:40;padding:10px 16px;background:var(--surface);border:1px solid var(--line-strong)}
 
-.wrap{max-width:720px;margin:0 auto;padding:22px 18px 8px}
+.wrap{max-width:720px;margin:0 auto}
+.inner{max-width:720px;margin:0 auto;padding:0 var(--gutter)}
 
-.masthead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
-.masthead h1{margin:0;color:var(--ink-strong);font-size:20px;font-weight:700;letter-spacing:.02em}
-.masthead p{margin:2px 0 0;color:var(--ink-soft);font-size:13px}
-.masthead .staff-link{
-  flex:none;padding:9px 14px;border-radius:14px;color:var(--ink-soft);
-  font-size:12px;font-weight:600;text-decoration:none;box-shadow:var(--raise-soft);
+/* ヘッダー */
+.appbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.appbar .inner{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:58px;padding-block:8px}
+.appbar h1{margin:0;font-size:17px;line-height:1.3}
+.appbar p{margin:1px 0 0;color:var(--ink-soft);font-size:12.5px;line-height:1.3}
+.appbar-link{flex:none;padding:8px 2px;color:var(--ink-mid);font-size:13px;font-weight:600;text-decoration:none}
+
+/* 沿線の運行情報 */
+.linebar{background:var(--surface);border-bottom:1px solid var(--line)}
+.linebar .inner{display:flex;flex-wrap:wrap;gap:6px 16px;padding-block:9px}
+.line-item{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-mid)}
+.line-item i{width:7px;height:7px;border-radius:50%;background:var(--go);font-style:normal}
+.line-item[data-status="trouble"]{color:var(--stop);font-weight:700}
+.line-item[data-status="trouble"] i{background:var(--stop)}
+.line-item[data-status="info"]{color:var(--warn)}
+.line-item[data-status="info"] i{background:var(--warn)}
+.line-item[data-status="unknown"] i{background:var(--line-strong)}
+.line-detail{width:100%;margin:2px 0 0;color:var(--stop);font-size:12.5px;line-height:1.55}
+
+/* お知らせ */
+.notices{background:var(--surface);border-bottom:1px solid var(--line)}
+.notice{padding:13px var(--gutter);border-left:4px solid var(--line-strong);background:var(--surface-sub)}
+.notice+.notice{margin-top:1px}
+.notice strong{display:block;font-size:15px}
+.notice p{margin:3px 0 0;color:var(--ink-mid);font-size:13.5px;white-space:pre-line}
+.notice[data-level="warn"]{border-color:var(--warn);background:var(--warn-tint)}
+.notice[data-level="warn"] strong{color:var(--warn)}
+.notice[data-level="alert"]{border-color:var(--stop);background:var(--stop-tint)}
+.notice[data-level="alert"] strong{color:var(--stop)}
+
+/* 日付の切り替え */
+.daybar{display:flex;gap:8px;padding:14px var(--gutter) 0}
+.daybar button{
+  flex:1;min-height:46px;padding:0 12px;border:1px solid var(--line-strong);border-radius:10px;
+  background:var(--surface);color:var(--ink-mid);font-size:14px;font-weight:600;
 }
-.masthead .staff-link:active{box-shadow:var(--press)}
-
-.search-row{
-  display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:0 18px;
-  border-radius:var(--radius-small);box-shadow:var(--press);
-}
-.search-row svg{
-  flex:none;width:18px;height:18px;fill:none;stroke:var(--ink-soft);
-  stroke-width:1.8;stroke-linecap:round;
-}
-.search-row input{
-  flex:1;min-width:0;min-height:52px;padding:0;border:0;background:transparent;
-  color:var(--ink-strong);font-size:16px;
-}
-.search-row input::placeholder{color:var(--ink-soft)}
-.search-row input:focus{outline:none}
-.search-row:focus-within{box-shadow:var(--press), 0 0 0 2px rgba(74,107,138,.25)}
-
-.day-switch{display:flex;gap:10px;margin-bottom:14px}
-.day-switch button{
-  flex:1;min-height:50px;border-radius:var(--radius-small);
-  color:var(--ink-soft);font-size:15px;font-weight:700;box-shadow:var(--raise);
-}
-.day-switch button[aria-pressed="true"]{color:var(--ink-strong);box-shadow:var(--press)}
-
-.stop-switch{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
-.stop-switch button{
-  min-height:42px;padding:0 16px;border-radius:14px;
-  color:var(--ink-soft);font-size:14px;font-weight:600;box-shadow:var(--raise-soft);
-}
-.stop-switch button[aria-pressed="true"]{color:var(--ink-strong);box-shadow:var(--press)}
-
-.section-title{display:flex;align-items:baseline;gap:10px;margin:0 4px 12px}
-.section-title h2{margin:0;color:var(--ink-strong);font-size:17px;font-weight:700}
-.section-title span{color:var(--ink-soft);font-size:13px}
-
-.list{display:grid;gap:14px;margin:0;padding:0;list-style:none}
-.row{
-  display:flex;align-items:center;gap:16px;padding:18px 20px;
-  border-radius:var(--radius);background:var(--bg);box-shadow:var(--raise);
-}
-.row .time{flex:none;min-width:88px}
-.row .time strong{
-  display:block;color:var(--ink-strong);font-size:27px;font-weight:700;
-  font-variant-numeric:tabular-nums;letter-spacing:.01em;line-height:1.15;
-}
-.row .time small{display:block;color:var(--ink-soft);font-size:11px;font-weight:600;letter-spacing:.08em}
-.row .body{flex:1;min-width:0}
-.row .body strong{display:block;color:var(--ink-strong);font-size:16px;font-weight:700}
-.row .body span{display:block;margin-top:2px;color:var(--ink-soft);font-size:13px}
-.row .mark{flex:none;font-size:12px;font-weight:700;letter-spacing:.04em}
-.row .mark.stop{color:var(--stop)}
-.row .mark.warn{color:var(--warn)}
-.row .mark.go{color:var(--go)}
-
-.row.next{box-shadow:var(--raise), 0 0 0 2px rgba(74,107,138,.22)}
-.row.next .time small{color:var(--accent)}
-.row.past{opacity:.5}
-.row.cancelled .time strong{color:var(--stop);text-decoration:line-through}
-
-.card{
-  padding:20px 22px;border-radius:var(--radius);background:var(--bg);box-shadow:var(--raise);
-}
-.card+.card{margin-top:14px}
-.card h2{margin:0 0 6px;color:var(--ink-strong);font-size:16px;font-weight:700}
-.card p{margin:0;color:var(--ink);font-size:14px}
-.card ul{margin:10px 0 0;padding-left:20px;color:var(--ink);font-size:14px}
-.card li+li{margin-top:6px}
-.card.stop h2{color:var(--stop)}
-.card.warn h2{color:var(--warn)}
-.card.go h2{color:var(--go)}
-
-.empty{padding:34px 20px;border-radius:var(--radius);background:var(--bg);box-shadow:var(--press);color:var(--ink-soft);font-size:14px;text-align:center}
-.note{margin:18px 4px 0;color:var(--ink-soft);font-size:12px}
-
-.tabbar{
-  position:fixed;left:0;right:0;bottom:0;z-index:20;
-  display:flex;gap:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
-  background:var(--bg);box-shadow:0 -8px 20px rgba(190,190,190,.55);
-}
-.tabbar button{
-  flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
-  min-height:58px;padding:8px 4px;border-radius:var(--radius-small);
-  color:var(--ink-soft);font-size:12px;font-weight:700;box-shadow:var(--raise-soft);
-}
-.tabbar button[aria-pressed="true"]{color:var(--ink-strong);box-shadow:var(--press)}
-.tabbar svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-
-@media (max-width:420px){
-  .wrap{padding:18px 14px 8px}
-  .row{gap:12px;padding:16px}
-  .row .time{min-width:78px}
-  .row .time strong{font-size:24px}
+.daybar button[aria-pressed="true"]{
+  border-color:var(--accent);background:var(--accent);color:#fff;font-weight:700;
 }
 
-@media print{
-  body{padding-bottom:0;background:#fff}
-  .tabbar,.day-switch,.stop-switch,.staff-link,.note{display:none}
-  .row,.card{box-shadow:none;border-bottom:1px solid #ccc;border-radius:0;padding:8px 0}
+.lead{margin:20px var(--gutter) 10px;font-size:15px}
+
+/* 選択肢 */
+.choices{background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.choice+.choice{border-top:1px solid var(--line)}
+.choice-head{
+  display:flex;align-items:center;gap:14px;width:100%;
+  padding:16px var(--gutter);text-align:left;
+}
+.choice-icon{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--accent-tint)}
+.choice-icon svg{width:23px;height:23px;fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.choice-text{flex:1;min-width:0}
+.choice-text strong{display:block;font-size:16.5px;font-weight:700}
+.choice-text small{display:block;margin-top:1px;color:var(--ink-soft);font-size:12.5px;line-height:1.5}
+.choice-mark{
+  flex:none;width:11px;height:11px;margin-right:4px;
+  border-right:2px solid var(--ink-soft);border-bottom:2px solid var(--ink-soft);
+  transform:rotate(45deg) translate(-2px,-2px);
+}
+.choice-head[aria-expanded="true"]{background:var(--surface-sub)}
+.choice-head[aria-expanded="true"] .choice-mark{transform:rotate(-135deg) translate(-3px,-3px)}
+.choice-body{padding:4px var(--gutter) 20px}
+
+/* 絞り込み */
+.field{margin-top:16px}
+.field>h3{margin:0 0 8px;color:var(--ink-mid);font-size:13px;font-weight:700}
+.picker{display:flex;flex-wrap:wrap;gap:8px}
+.picker button{
+  min-height:48px;padding:0 14px;border:1px solid var(--line-strong);border-radius:10px;
+  background:var(--surface);color:var(--ink);font-size:14.5px;font-weight:600;text-align:left;
+}
+.picker button small{display:block;color:var(--ink-soft);font-size:11.5px;font-weight:500}
+.picker button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-tint);color:var(--accent-deep);font-weight:700}
+.picker button[aria-pressed="true"] small{color:var(--accent-deep)}
+.picker.stops button{flex:1 1 auto;min-width:104px;padding-block:7px}
+.time-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.time-row input[type="time"]{
+  min-height:48px;padding:0 12px;border:1px solid var(--line-strong);border-radius:10px;
+  background:var(--surface);color:var(--ink);font:inherit;font-variant-numeric:tabular-nums;
+}
+.time-row button.link{color:var(--accent);font-size:14px;font-weight:600;padding:8px 4px;min-height:44px}
+
+/* 結果 */
+.result{margin-top:18px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.result-main{padding:16px}
+.result-kicker{color:var(--ink-mid);font-size:13px;font-weight:600}
+.result-time{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:4px}
+.result-time strong{font-size:42px;font-weight:700;line-height:1.05;letter-spacing:-.02em}
+.result-time span{font-size:15px;font-weight:600;color:var(--ink-mid)}
+.result-wait{color:var(--accent);font-size:15px;font-weight:700}
+.result-wait.soon{color:var(--stop)}
+.result-arrow{margin:8px 0 0;font-size:16px;font-weight:600}
+.result-arrow b{font-weight:700;font-variant-numeric:tabular-nums}
+.result-note{margin:6px 0 0;color:var(--ink-mid);font-size:13px}
+.result-place{padding:14px 16px;border-top:1px solid var(--line);background:var(--surface-sub)}
+.result-place strong{display:block;font-size:14.5px}
+.result-place p{margin:3px 0 0;color:var(--ink-mid);font-size:13px}
+.map-button{
+  display:inline-flex;align-items:center;gap:8px;min-height:44px;margin-top:10px;padding:0 16px;
+  border:1px solid var(--accent);border-radius:10px;color:var(--accent);
+  font-size:14px;font-weight:700;text-decoration:none;background:var(--surface);
+}
+.map-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.crowd{display:flex;align-items:flex-start;gap:8px;padding:11px 16px;border-top:1px solid var(--line);font-size:13.5px}
+.crowd[data-level="crowded"]{background:var(--warn-tint);color:var(--warn)}
+.crowd[data-level="packed"]{background:var(--stop-tint);color:var(--stop)}
+.crowd[data-level="calm"]{background:var(--go-tint);color:var(--go)}
+.crowd b{font-weight:700}
+
+.follow{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.follow li{display:flex;align-items:center;gap:12px;padding:11px 16px;font-size:14px}
+.follow li+li{border-top:1px solid var(--line)}
+.follow b{flex:none;min-width:52px;font-weight:700}
+.follow span{color:var(--ink-mid);font-size:13px}
+.follow-head{padding:10px 16px 0;color:var(--ink-mid);font-size:12.5px;font-weight:700}
+
+.last-bus{margin-top:14px;padding:13px 16px;border:1px solid var(--stop);border-radius:12px;background:var(--stop-tint)}
+.last-bus strong{display:block;color:var(--stop);font-size:14px}
+.last-bus p{margin:3px 0 0;color:var(--ink);font-size:13.5px}
+.last-bus b{font-variant-numeric:tabular-nums;font-weight:700}
+
+.empty{margin:18px 0 0;padding:26px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink-mid);font-size:14px;text-align:center}
+
+/* 時刻表 */
+.table-tools{display:flex;gap:8px;margin-top:14px}
+.table-tools button{
+  flex:1;min-height:44px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);
+  color:var(--ink-mid);font-size:14px;font-weight:600;
+}
+.table-tools button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-tint);color:var(--accent-deep);font-weight:700}
+.timetable{margin-top:14px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.hour-head{
+  display:flex;justify-content:space-between;padding:6px 14px;
+  border-bottom:1px solid var(--line);background:var(--surface-sub);
+  color:var(--ink-mid);font-size:12px;font-weight:700;
+}
+.hour-head+.hour-head,.trip+.hour-head{border-top:1px solid var(--line)}
+.trip{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.timetable>*:last-child{border-bottom:0}
+.trip-time{flex:none;width:62px;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.trip-body{flex:1;min-width:0}
+.trip-body strong{display:block;font-size:14.5px;font-weight:600}
+.trip-body span{display:block;color:var(--ink-mid);font-size:12.5px}
+.trip-state{flex:none;font-size:12px;font-weight:700}
+.trip-state.stop{padding:2px 6px;border-radius:3px;background:var(--stop);color:#fff}
+.trip-state.warn{color:var(--warn)}
+.trip.is-past{color:var(--ink-soft)}
+.trip.is-past .trip-time,.trip.is-past .trip-body strong{color:var(--ink-soft);font-weight:600}
+.trip.is-next{background:var(--accent-tint);box-shadow:inset 3px 0 0 var(--accent)}
+
+/* 乗り場 */
+.stop-list{display:grid;gap:12px;margin-top:14px}
+.stop-item{padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.stop-item h3{margin:0;font-size:16px}
+.stop-item .line-name{margin:1px 0 0;color:var(--ink-soft);font-size:12.5px}
+.stop-item p{margin:8px 0 0;font-size:13.5px}
+.stop-item .walk{color:var(--ink-mid);font-size:13px}
+
+/* 催し */
+.program-list{display:grid;gap:10px;margin-top:14px}
+.program{display:flex;gap:12px;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);width:100%;text-align:left}
+.program[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-tint)}
+.program .time{flex:none;width:62px;font-weight:700;font-variant-numeric:tabular-nums}
+.program .body strong{display:block;font-size:15px}
+.program .body span{display:block;color:var(--ink-mid);font-size:12.5px}
+
+.foot{display:grid;gap:3px;padding:18px var(--gutter) 6px;color:var(--ink-soft);font-size:11.5px;text-align:center}
+.foot .credit{font-size:10.5px;line-height:1.5}
+
+@media (max-width:360px){
+  .result-time strong{font-size:36px}
+  .choice-text strong{font-size:15.5px}
 }
 
-/* イベントと乗り継ぎ案内 */
-.row.program{align-items:flex-start}
-.row.program .time strong{font-size:22px}
-.row.program .body p{margin:8px 0 0;color:var(--ink);font-size:13px;white-space:pre-line}
-.bus-hint{
-  display:grid;gap:6px;margin-top:12px;padding:12px 14px;
-  border-radius:var(--radius-small);box-shadow:var(--press);
+@media (min-width:760px){
+  .choices{border-radius:14px;border:1px solid var(--line)}
+  .wrap{padding-bottom:30px}
 }
-.bus-hint div{display:flex;gap:10px;align-items:baseline;font-size:13px;color:var(--ink)}
-.bus-hint small{flex:none;width:34px;color:var(--ink-soft);font-size:11px;font-weight:700;letter-spacing:.06em}
-.bus-hint b{color:var(--ink-strong);font-size:15px;font-variant-numeric:tabular-nums;font-weight:700}
-.bus-hint .none{color:var(--ink-soft)}
+
+@media (prefers-reduced-motion:no-preference){
+  .choice-mark{transition:transform .18s ease}
+  .picker button,.daybar button{transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+}

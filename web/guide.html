@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="robots" content="noindex">
+  <title>案内設定 | JOHOKU SAITAMA BUS</title>
+  <link rel="icon" href="/app-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/diagram.css">
+  <link rel="stylesheet" href="/guide-admin.css">
+</head>
+<body>
+  <div id="workspace">
+    <header class="admin-header">
+      <div class="admin-header-inner">
+        <div class="admin-mark">
+          <img src="/assets/brand/bus-front-line-livery.png" alt="" aria-hidden="true">
+          <div><strong>JOHOKU SAITAMA</strong><span>案内設定</span></div>
+        </div>
+        <a class="header-link" href="/" target="_blank" rel="noopener">一般用を確認</a>
+        <a class="header-link" href="/diagram">ダイヤ管理</a>
+        <a class="header-link" href="/program">ステージ</a>
+        <a class="header-link" href="/staff">職員用</a>
+      </div>
+    </header>
+
+    <main>
+      <div class="page-intro">
+        <div>
+          <h1>一般用の案内をつくる</h1>
+          <p>ここで登録した内容が、来場者の画面にそのまま出ます。乗り場と区間の所要時間は、駅ごとの発車時刻の計算に使われます。</p>
+        </div>
+      </div>
+
+      <section class="panel" id="eventPanel">
+        <div class="panel-heading">
+          <h2>開催日</h2>
+          <p>来場者の画面には曜日ではなく、この日付が出ます。土曜ダイヤと日曜ダイヤのどちらを使う日かを決めます。</p>
+        </div>
+        <div class="panel-body">
+          <div class="form-error" id="eventError" role="alert" tabindex="-1" hidden></div>
+          <div class="form-grid">
+            <label><span class="field-label">行事名</span><input id="eventName" type="text" maxlength="40" placeholder="文化祭"></label>
+            <label><span class="field-label">土曜ダイヤの日</span><input id="eventSaturday" type="date"></label>
+            <label><span class="field-label">日曜ダイヤの日</span><input id="eventSunday" type="date"></label>
+          </div>
+          <div class="form-actions"><button type="button" class="button primary" id="saveEventButton">開催日を保存</button></div>
+        </div>
+      </section>
+
+      <div class="segmented guide-tabs" id="guideTabs" role="group" aria-label="設定の種類">
+        <button type="button" data-tab="stops" aria-pressed="true">乗り場</button>
+        <button type="button" data-tab="legs" aria-pressed="false">所要時間</button>
+        <button type="button" data-tab="notices" aria-pressed="false">お知らせ</button>
+        <button type="button" data-tab="crowd" aria-pressed="false">混雑予測</button>
+        <button type="button" data-tab="lines" aria-pressed="false">沿線情報</button>
+      </div>
+
+      <!-- 乗り場 -->
+      <section class="panel guide-section" id="panelStops">
+        <div class="panel-heading">
+          <h2>乗り場</h2>
+          <p>来場者には「乗り場の名前」と「目印」が表示され、地図ボタンで地図アプリが開きます。iPhoneはApple マップ、それ以外はGoogle マップが開きます。</p>
+        </div>
+        <div class="panel-body">
+          <div class="stop-cards" id="stopCards"></div>
+          <div class="form-actions"><button type="button" class="button" id="addStopButton">乗り場を追加</button></div>
+        </div>
+      </section>
+
+      <!-- 所要時間 -->
+      <section class="panel guide-section" id="panelLegs" hidden>
+        <div class="panel-heading">
+          <h2>区間の所要時間</h2>
+          <p>学校と各駅、駅どうしの片道の所要時間です。この値から全便の駅の発車時刻と到着時刻を計算します。</p>
+        </div>
+        <div class="panel-body">
+          <div class="form-error" id="legError" role="alert" tabindex="-1" hidden></div>
+          <div class="leg-rows" id="legRows"></div>
+          <div class="form-actions">
+            <button type="button" class="button" id="addLegButton">区間を追加</button>
+            <button type="button" class="button primary" id="saveLegsButton">所要時間を保存</button>
+          </div>
+          <div class="preview">
+            <h3>全便との整合チェック</h3>
+            <div id="legCheck" class="check-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- お知らせ -->
+      <section class="panel guide-section" id="panelNotices" hidden>
+        <div class="panel-heading">
+          <h2>お知らせ</h2>
+          <p>一般用画面のいちばん上に出ます。雨天時の案内や臨時便など、当日その場で伝えたいことを書きます。</p>
+        </div>
+        <div class="panel-body">
+          <div class="form-error" id="noticeError" role="alert" tabindex="-1" hidden></div>
+          <form id="noticeForm">
+            <input type="hidden" id="noticeId">
+            <div class="form-grid">
+              <label><span class="field-label">出す日</span><select id="noticeDay"><option>すべて</option><option>土曜</option><option>日曜</option></select></label>
+              <label><span class="field-label">目立たせ方</span><select id="noticeLevel">
+                <option value="info">通常のお知らせ</option>
+                <option value="warn">注意</option>
+                <option value="alert">重要</option>
+              </select></label>
+              <label class="full"><span class="field-label">見出し</span><input id="noticeTitle" type="text" maxlength="60" placeholder="雨天時も通常どおり運行します" required></label>
+            </div>
+            <label style="display:block;margin-top:14px"><span class="field-label">本文</span><textarea id="noticeBody" maxlength="600" placeholder="補足があれば書きます。空欄でも構いません。"></textarea></label>
+            <div class="form-actions">
+              <button type="submit" class="button primary">お知らせを保存</button>
+              <button type="button" class="button" id="noticeResetButton">新規入力に戻す</button>
+            </div>
+          </form>
+          <div class="notice-list" id="noticeList"></div>
+        </div>
+      </section>
+
+      <!-- 混雑予測 -->
+      <section class="panel guide-section" id="panelCrowd" hidden>
+        <div class="panel-heading">
+          <h2>混雑予測</h2>
+          <p>ここで設定した時間帯が最優先で表示されます。設定がない時間帯は、来場者が調べた希望時刻の集中と、前回の乗車実績から自動で推定します。</p>
+        </div>
+        <div class="panel-body">
+          <div class="form-error" id="crowdError" role="alert" tabindex="-1" hidden></div>
+          <form id="crowdForm">
+            <input type="hidden" id="crowdId">
+            <div class="form-grid">
+              <label><span class="field-label">曜日</span><select id="crowdDay"><option>土曜</option><option>日曜</option></select></label>
+              <label><span class="field-label">向き</span><select id="crowdDirection">
+                <option value="both">行き帰り両方</option>
+                <option value="inbound">学校へ行く便</option>
+                <option value="outbound">学校から帰る便</option>
+              </select></label>
+              <label><span class="field-label">駅</span><select id="crowdStop"><option value="">すべての駅</option></select></label>
+              <label><span class="field-label">程度</span><select id="crowdLevel">
+                <option value="crowded">混み合う見込み</option>
+                <option value="packed">大変混み合う見込み</option>
+                <option value="calm">ゆったり</option>
+              </select></label>
+              <label><span class="field-label">開始</span><input id="crowdStart" type="time" required></label>
+              <label><span class="field-label">終了</span><input id="crowdEnd" type="time" required></label>
+              <label class="full"><span class="field-label">補足（任意）</span><input id="crowdNote" type="text" maxlength="120" placeholder="開場直後のため混み合います"></label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="button primary">混雑予測を保存</button>
+              <button type="button" class="button" id="crowdResetButton">新規入力に戻す</button>
+            </div>
+          </form>
+          <div class="notice-list" id="crowdList"></div>
+          <div class="preview">
+            <h3>いま集まっている検索（本日）</h3>
+            <div id="signalList" class="check-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 沿線情報 -->
+      <section class="panel guide-section" id="panelLines" hidden>
+        <div class="panel-heading">
+          <h2>沿線の運行情報</h2>
+          <p id="autoState">取得状況を確認しています。</p>
+        </div>
+        <div class="panel-body">
+          <div class="form-error" id="lineError" role="alert" tabindex="-1" hidden></div>
+          <div class="line-rows" id="lineRows"></div>
+          <div class="form-actions"><button type="button" class="button primary" id="saveLinesButton">手入力の内容を保存</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+  <script src="/guide-admin.js" defer></script>
+</body>
+</html>

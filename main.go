@@ -102,6 +102,10 @@ type AppSettings struct {
 	SchoolLatitude  float64 `json:"schoolLatitude"`
 	SchoolLongitude float64 `json:"schoolLongitude"`
 	SchoolRadius    float64 `json:"schoolRadius"`
+	// 一般用画面で日付として見せる開催日です。土曜ダイヤと日曜ダイヤに対応します。
+	EventName     string `json:"eventName"`
+	EventSaturday string `json:"eventSaturday"`
+	EventSunday   string `json:"eventSunday"`
 }
 
 type GeoPoint struct {
@@ -153,6 +157,13 @@ type State struct {
 	ProcessedRequests map[string]string        `json:"processedRequests,omitempty"`
 	RouteProfiles     map[string]*RouteProfile `json:"routeProfiles"`
 	Settings          AppSettings              `json:"settings"`
+	Stops             []Stop                   `json:"stops"`
+	Legs              []Leg                    `json:"legs"`
+	Notices           []Notice                 `json:"notices"`
+	CrowdHints        []CrowdHint              `json:"crowdHints"`
+	SearchSignals     []SearchSignal           `json:"searchSignals"`
+	LineStatuses      []LineStatus             `json:"lineStatuses"`
+	LineAttribution   []string                 `json:"lineAttribution"`
 }
 
 type Store struct {
@@ -949,6 +960,17 @@ func (s *Store) saveSettings(input AppSettings) (AppSettings, error) {
 	if input.SchoolRadius > 200 {
 		input.SchoolRadius = 200
 	}
+	input.EventName = clean(input.EventName, 40)
+	input.EventSaturday = clean(input.EventSaturday, 10)
+	input.EventSunday = clean(input.EventSunday, 10)
+	for _, date := range []string{input.EventSaturday, input.EventSunday} {
+		if date == "" {
+			continue
+		}
+		if _, err := time.Parse("2006-01-02", date); err != nil {
+			return AppSettings{}, errors.New("開催日はYYYY-MM-DDで入力してください")
+		}
+	}
 	s.state.Settings = input
 	s.addEventLocked("", "school-point", "学校地点⓪を更新")
 	return input, s.saveLocked()
@@ -1513,10 +1535,11 @@ func currentUser(r *http.Request) AuthUser {
 }
 
 type App struct {
-	store       *Store
-	auth        *Auth
-	routingBase string
-	httpClient  *http.Client
+	store        *Store
+	auth         *Auth
+	routingBase  string
+	httpClient   *http.Client
+	trainInfoURL string
 }
 
 func (a *App) require(roles ...string) func(http.Handler) http.Handler {
@@ -1955,7 +1978,16 @@ func main() {
 		log.Printf("%d便を取り込みました", len(templates))
 		return
 	}
-	app := &App{store: store, auth: NewAuth(), routingBase: envOr("ROUTING_API", "https://router.project-osrm.org"), httpClient: &http.Client{Timeout: 15 * time.Second}}
+	app := &App{
+		store:       store,
+		auth:        NewAuth(),
+		routingBase: envOr("ROUTING_API", "https://router.project-osrm.org"),
+		httpClient:  &http.Client{Timeout: 15 * time.Second},
+		// 運行情報はHUBBのtraininfo-api（JR東日本公式・公共交通オープンデータセンター・私鉄各社公式を統合、匿名GET）から取ります。
+		trainInfoURL: envOr("TRAININFO_API", "https://script.google.com/macros/s/AKfycbxu0W_WXSw7KJNHTFM4lsLONRTRgcIsLXV_JmxNI7R5DbospsSO4OFVfga9FJNZYOfL/exec"),
+	}
+	store.seedGuideDefaults()
+	app.startLineStatusRefresh()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/login", app.login)
 	mux.HandleFunc("POST /api/logout", app.logout)
@@ -1973,11 +2005,36 @@ func main() {
 	mux.Handle("GET /api/timetable", app.require("admin")(http.HandlerFunc(app.timetable)))
 	mux.Handle("PUT /api/timetable", app.require("admin")(http.HandlerFunc(app.timetable)))
 	mux.Handle("DELETE /api/timetable/{day}/{operation}/{column}", app.require("admin")(http.HandlerFunc(app.timetableEntry)))
+	mux.HandleFunc("GET /api/public/guide", app.publicGuide)
+	mux.HandleFunc("POST /api/public/signal", app.publicSignal)
 	mux.HandleFunc("GET /api/public/schedule", app.publicSchedule)
 	mux.HandleFunc("GET /api/public/programs", app.publicPrograms)
 	mux.Handle("GET /api/programs", app.require("admin", "driver", "viewer")(http.HandlerFunc(app.programs)))
 	mux.Handle("PUT /api/programs", app.require("admin")(http.HandlerFunc(app.programs)))
 	mux.Handle("DELETE /api/programs/{id}", app.require("admin")(http.HandlerFunc(app.programByID)))
+	// 案内設定は当日その場で直せるよう、ログインなしで開けます。
+	// GUIDE_LOCK=1 を設定すると管理者のログインが必要になります。
+	guard := func(handler http.HandlerFunc) http.Handler {
+		if envOr("GUIDE_LOCK", "") == "1" {
+			return app.require("admin")(http.HandlerFunc(handler))
+		}
+		return http.HandlerFunc(handler)
+	}
+	mux.Handle("GET /api/stops", guard(app.stops))
+	mux.Handle("PUT /api/stops", guard(app.stops))
+	mux.Handle("DELETE /api/stops/{id}", guard(app.stopByID))
+	mux.Handle("GET /api/legs", guard(app.legs))
+	mux.Handle("PUT /api/legs", guard(app.legs))
+	mux.Handle("GET /api/notices", guard(app.notices))
+	mux.Handle("PUT /api/notices", guard(app.notices))
+	mux.Handle("DELETE /api/notices/{id}", guard(app.noticeByID))
+	mux.Handle("GET /api/crowd-hints", guard(app.crowdHints))
+	mux.Handle("PUT /api/crowd-hints", guard(app.crowdHints))
+	mux.Handle("DELETE /api/crowd-hints/{id}", guard(app.crowdHintByID))
+	mux.Handle("GET /api/line-statuses", guard(app.lineStatuses))
+	mux.Handle("PUT /api/line-statuses", guard(app.lineStatuses))
+	mux.Handle("GET /api/guide/event", guard(app.guideEvent))
+	mux.Handle("PATCH /api/guide/event", guard(app.guideEvent))
 	mux.Handle("GET /api/settings", app.require("admin", "driver", "viewer")(http.HandlerFunc(app.settings)))
 	mux.Handle("PATCH /api/settings", app.require("admin")(http.HandlerFunc(app.settings)))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200); _, _ = w.Write([]byte("ok")) })
@@ -1989,6 +2046,8 @@ func main() {
 	mux.Handle("GET /staff", pageHandler(staticFiles, "staff.html"))
 	mux.Handle("GET /staff/{$}", pageHandler(staticFiles, "staff.html"))
 	mux.Handle("GET /diagram", pageHandler(staticFiles, "diagram.html"))
+	mux.Handle("GET /guide", pageHandler(staticFiles, "guide.html"))
+	mux.Handle("GET /guide/{$}", pageHandler(staticFiles, "guide.html"))
 	mux.Handle("GET /program", pageHandler(staticFiles, "program.html"))
 	mux.Handle("GET /program/{$}", pageHandler(staticFiles, "program.html"))
 	mux.Handle("GET /diagram/{$}", pageHandler(staticFiles, "diagram.html"))

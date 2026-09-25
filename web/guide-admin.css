@@ -1,0 +1,69 @@
+/* 案内設定の画面。diagram.css の上に必要なものだけ足します。 */
+.guide-tabs{margin-top:16px;overflow-x:auto}
+.guide-tabs button{white-space:nowrap;padding:0 14px}
+
+.guide-section .panel-body{display:grid;gap:16px}
+
+/* 乗り場 */
+.stop-cards{display:grid;gap:14px}
+.stop-card{border:1px solid var(--stroke);border-radius:var(--radius);background:#fff}
+.stop-card-head{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 16px;border-bottom:1px solid var(--stroke);background:var(--canvas-soft);
+}
+.stop-card-head strong{color:var(--ink-strong);font-size:16px}
+.stop-card-head small{color:var(--ink-soft);font-size:13px}
+.stop-card-head .spacer{flex:1}
+.stop-card-body{display:grid;gap:12px;padding:14px 16px}
+.stop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.stop-grid label{display:grid;gap:4px}
+.stop-grid .full{grid-column:1/-1}
+.stop-grid input{min-height:44px;padding:0 12px;border:1px solid var(--stroke-strong);border-radius:var(--radius-small)}
+.stop-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.stop-actions .spacer{flex:1}
+.map-hint{color:var(--ink-soft);font-size:13px}
+.map-hint a{color:var(--brand);font-weight:700}
+
+/* 区間の所要時間 */
+.leg-rows{display:grid;gap:10px}
+.leg-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) 110px auto;gap:10px;align-items:center}
+.leg-row input{min-height:44px;padding:0 12px;border:1px solid var(--stroke-strong);border-radius:var(--radius-small);min-width:0}
+.leg-row .arrow{color:var(--ink-soft);font-weight:700}
+.leg-row button{min-height:40px;padding:0 12px;border:1px solid var(--stroke-strong);border-radius:999px;background:#fff;font-size:13px;font-weight:700;cursor:pointer}
+
+/* 一覧 */
+.notice-list{display:grid;gap:10px}
+.notice-item{
+  display:flex;gap:12px;align-items:flex-start;padding:12px 14px;
+  border:1px solid var(--stroke);border-left:4px solid var(--stroke-strong);border-radius:var(--radius-small);background:#fff;
+}
+.notice-item[data-level="warn"]{border-left-color:var(--warn);background:var(--warn-soft)}
+.notice-item[data-level="alert"]{border-left-color:var(--stop);background:var(--stop-soft)}
+.notice-item[data-level="calm"]{border-left-color:var(--go);background:var(--go-soft)}
+.notice-item .body{flex:1;min-width:0}
+.notice-item strong{display:block;color:var(--ink-strong);font-size:15px}
+.notice-item p{margin:3px 0 0;color:var(--ink-soft);font-size:13px;white-space:pre-line}
+.notice-item .tools{display:flex;gap:8px}
+.notice-item button{
+  min-height:36px;padding:0 12px;border:1px solid var(--stroke-strong);border-radius:999px;
+  background:#fff;font-size:13px;font-weight:700;cursor:pointer;
+}
+.notice-item button.danger{border-color:var(--stop);color:var(--stop)}
+
+/* 沿線 */
+.line-rows{display:grid;gap:10px}
+.line-row{display:grid;grid-template-columns:150px 150px minmax(0,1fr);gap:10px;align-items:center}
+.line-row select,.line-row input{min-height:44px;padding:0 12px;border:1px solid var(--stroke-strong);border-radius:var(--radius-small);min-width:0}
+.line-row strong{color:var(--ink-strong);font-size:15px}
+
+.empty-note{margin:0;color:var(--ink-soft);font-size:14px}
+
+@media (max-width:760px){
+  .leg-row{grid-template-columns:1fr auto 1fr;grid-template-areas:"from arrow to" "minutes minutes minutes" "tools tools tools"}
+  .leg-row .leg-from{grid-area:from}
+  .leg-row .arrow{grid-area:arrow}
+  .leg-row .leg-to{grid-area:to}
+  .leg-row .leg-minutes{grid-area:minutes}
+  .leg-row button{grid-area:tools;justify-self:start}
+  .line-row{grid-template-columns:1fr}
+}

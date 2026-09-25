@@ -21,6 +21,13 @@ services:
       # 職員番号と暗証番号はRenderの管理画面から設定します。値はリポジトリへ置きません。
       - key: APP_USERS
         sync: false
+      # 案内設定 /guide はログインなしで開きます。
+      # 校外公開で編集を制限する場合は GUIDE_LOCK を 1 にして管理者ログインを必須にします。
+      # - key: GUIDE_LOCK
+      #   value: "1"
+      # 沿線の運行情報の取得先。未指定なら既定のtraininfo-apiを使います。
+      # - key: TRAININFO_API
+      #   sync: false
     disk:
       name: school-bus-data
       mountPath: /var/lib/school-bus

@@ -3,94 +3,108 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#e0e0e0">
-  <meta name="description" content="スクールバスの土曜ダイヤと日曜ダイヤ、往路と復路の時刻案内です。">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="学校へ行く時刻、学校から帰る時刻、乗り場の場所をご案内します。">
   <meta name="robots" content="noindex">
-  <title>スクールバス時刻</title>
+  <title>スクールバスのご案内</title>
   <link rel="icon" href="/app-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/public.css">
 </head>
 <body>
-  <a class="skip-link" href="#listSection">時刻へ移動</a>
+  <a class="skip-link" href="#choices">案内へ移動</a>
 
-  <div class="wrap">
-    <header class="masthead">
-      <div>
-        <h1>スクールバス時刻</h1>
-        <p id="todayLabel">—</p>
+  <header class="appbar">
+    <div class="inner">
+      <div class="appbar-title">
+        <h1>スクールバス</h1>
+        <p id="eventLabel">ご案内</p>
       </div>
-      <a class="staff-link" href="/staff">職員用</a>
-    </header>
+      <a class="appbar-link" href="/staff">職員用</a>
+    </div>
+  </header>
 
-    <div class="search-row">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
-      <input id="searchInput" type="search" enterkeyhint="search" placeholder="行き先、時刻、イベントで検索" aria-label="行き先、時刻、イベントで検索">
+  <div class="linebar" id="lineBar" hidden></div>
+  <div class="notices" id="notices" hidden></div>
+
+  <main class="wrap">
+    <div class="daybar" id="dayBar" role="group" aria-label="日付" hidden></div>
+
+    <h2 class="lead" id="choicesHeading">どちらをお調べですか</h2>
+
+    <div class="choices" id="choices">
+      <section class="choice" data-mode="inbound">
+        <button type="button" class="choice-head" aria-expanded="false" aria-controls="bodyInbound">
+          <span class="choice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 18h16M6 8h12v6H6zM8 18v2m8-2v2M12 3v3m0 0-2-2m2 2 2-2"/></svg>
+          </span>
+          <span class="choice-text">
+            <strong>学校へ行く</strong>
+            <small>駅から学校までのバスをお調べします</small>
+          </span>
+          <span class="choice-mark" aria-hidden="true"></span>
+        </button>
+        <div class="choice-body" id="bodyInbound" hidden></div>
+      </section>
+
+      <section class="choice" data-mode="outbound">
+        <button type="button" class="choice-head" aria-expanded="false" aria-controls="bodyOutbound">
+          <span class="choice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 18h16M6 8h12v6H6zM8 18v2m8-2v2M12 6V3m0 3 2-2m-2 2-2-2"/></svg>
+          </span>
+          <span class="choice-text">
+            <strong>学校から帰る</strong>
+            <small>学校から駅までのバスと最終便をご案内します</small>
+          </span>
+          <span class="choice-mark" aria-hidden="true"></span>
+        </button>
+        <div class="choice-body" id="bodyOutbound" hidden></div>
+      </section>
+
+      <section class="choice" data-mode="timetable">
+        <button type="button" class="choice-head" aria-expanded="false" aria-controls="bodyTimetable">
+          <span class="choice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM5 10h14M9 3v4m6-4v4"/></svg>
+          </span>
+          <span class="choice-text">
+            <strong>時刻表をすべて見る</strong>
+            <small>その日のバスの時刻を一覧でご覧いただけます</small>
+          </span>
+          <span class="choice-mark" aria-hidden="true"></span>
+        </button>
+        <div class="choice-body" id="bodyTimetable" hidden></div>
+      </section>
+
+      <section class="choice" data-mode="stops">
+        <button type="button" class="choice-head" aria-expanded="false" aria-controls="bodyStops">
+          <span class="choice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          </span>
+          <span class="choice-text">
+            <strong>乗り場をさがす</strong>
+            <small>駅のどこから乗るかを地図でご確認いただけます</small>
+          </span>
+          <span class="choice-mark" aria-hidden="true"></span>
+        </button>
+        <div class="choice-body" id="bodyStops" hidden></div>
+      </section>
+
+      <section class="choice" data-mode="event">
+        <button type="button" class="choice-head" aria-expanded="false" aria-controls="bodyEvent">
+          <span class="choice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 20V9l8-5 8 5v11zM9 20v-6h6v6"/></svg>
+          </span>
+          <span class="choice-text">
+            <strong>催しに合わせて調べる</strong>
+            <small>見たい催しの時間に合わせてバスをお選びします</small>
+          </span>
+          <span class="choice-mark" aria-hidden="true"></span>
+        </button>
+        <div class="choice-body" id="bodyEvent" hidden></div>
+      </section>
     </div>
 
-    <div class="day-switch" id="daySwitch" role="group" aria-label="曜日">
-      <button type="button" data-day="土曜" aria-pressed="true">土曜</button>
-      <button type="button" data-day="日曜" aria-pressed="false">日曜</button>
-    </div>
-
-    <div class="stop-switch" id="stopSwitch" role="group" aria-label="行き先"></div>
-
-    <section id="listSection" tabindex="-1">
-      <div class="section-title">
-        <h2 id="listHeading">学校発</h2>
-        <span id="listCount"></span>
-      </div>
-      <ul class="list" id="list"></ul>
-      <div class="empty" id="listEmpty" hidden>この時間帯の便はありません</div>
-    </section>
-
-    <section id="eventSection" hidden>
-      <div class="section-title">
-        <h2 id="eventHeading">イベント</h2>
-        <span id="eventCount"></span>
-      </div>
-      <ul class="list" id="eventList"></ul>
-      <div class="empty" id="eventEmpty" hidden>ステージプログラムは準備中です</div>
-      <p class="note">進行状況により時間が前後する場合があります。バスの時刻は目安としてご利用ください。</p>
-    </section>
-
-    <section id="infoSection" hidden>
-      <div class="section-title"><h2>運行情報</h2></div>
-      <div class="card" id="statusCard">
-        <h2 id="statusTitle">—</h2>
-        <p id="statusText"></p>
-        <ul id="statusList" hidden></ul>
-      </div>
-      <div class="card">
-        <h2>ご利用のお願い</h2>
-        <ul>
-          <li>道路状況により時刻が前後します。発車時刻の5分前までに乗り場へお越しください。</li>
-          <li>駅での発車時刻が決まっていない便は、学校着の時刻だけを表示しています。</li>
-          <li>当日の運休と遅れは、この画面に自動で表示されます。</li>
-        </ul>
-      </div>
-    </section>
-
-    <p class="note" id="updatedLabel"></p>
-  </div>
-
-  <nav class="tabbar" id="tabbar" aria-label="表示の切り替え">
-    <button type="button" data-tab="outbound" aria-pressed="true">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M6 6h12v8H6zM8 18v2m8-2v2"/></svg>
-      往路
-    </button>
-    <button type="button" data-tab="inbound" aria-pressed="false">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6H4m14 12H6v-8h12zM8 18v2m8-2v2"/></svg>
-      復路
-    </button>
-    <button type="button" data-tab="event" aria-pressed="false">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v15H5zM8 3v4m8-4v4M5 10h14"/></svg>
-      イベント
-    </button>
-    <button type="button" data-tab="info" aria-pressed="false">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>
-      運行情報
-    </button>
-  </nav>
+    <p class="foot" id="updatedLabel"></p>
+  </main>
 
   <script src="/public.js" defer></script>
 </body>
