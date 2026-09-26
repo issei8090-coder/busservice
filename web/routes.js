@@ -5,6 +5,14 @@
   const esc = (value = "") => String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
 
   function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+  // 未設定の座標は (0,0) で保存されます。実在の地点として扱うと、日本の車両と
+  // ギニア湾の(0,0)を両方収めようとして、地図の中心が海の真ん中へ飛びます。
+  function located(point) {
+    if (!point) return false;
+    const { latitude, longitude } = point;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+    return Math.abs(latitude) > 0.0001 || Math.abs(longitude) > 0.0001;
+  }
   function worldSize(zoom) { return TILE_SIZE * (2 ** zoom); }
   function project(point, zoom) {
     const size = worldSize(zoom);
@@ -98,11 +106,13 @@
       }
     }
     fit(points) {
-      if (!points?.length) { this.center = { ...DEFAULT_CENTER }; this.zoom = 13; this.render(); return; }
+      points = (points || []).filter(located);
+      if (!points.length) { this.center = { ...DEFAULT_CENTER }; this.zoom = 13; this.render(); return; }
       let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
       points.forEach((point) => { minLat = Math.min(minLat, point.latitude); maxLat = Math.max(maxLat, point.latitude); minLon = Math.min(minLon, point.longitude); maxLon = Math.max(maxLon, point.longitude); });
       this.center = { latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2 };
       const rect = this.element.getBoundingClientRect();
+      this.zoom = 8;
       for (let zoom = 17; zoom >= 8; zoom -= 1) {
         const a = project({ latitude: minLat, longitude: minLon }, zoom);
         const b = project({ latitude: maxLat, longitude: maxLon }, zoom);
@@ -304,7 +314,7 @@
       if (!fleetMap || fleetMap.element !== element) { fleetMap?.destroy(); fleetMap = new OSMMap(element); fleetFitted = false; }
       const routes = (profiles || []).map((profile) => ({ geometry: profile.geometry || [], color: profile.color || "#1e60aa" }));
       fleetMap.setData({ routes, positions: positions || [], school });
-      const points = routes.flatMap((route) => route.geometry).concat(positions || []).concat(school ? [school] : []);
+      const points = routes.flatMap((route) => route.geometry).concat(positions || []).concat(school ? [school] : []).filter(located);
       if (points.length && !fleetFitted) { fleetMap.fit(points); fleetFitted = true; }
     },
   };
