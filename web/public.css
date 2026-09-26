@@ -275,7 +275,12 @@ p{margin:0}
 /* 開幕の所作。題字は1字ずつ右から差し込み、日付がそのあとに続きます。
    帯が右から入るのと同じ動きなので、page全体でひとつの所作に見えます。 */
 /* 1字ずつ動かすので、字を inline-block にします。
-   ただし親の background-clip:text は子の字に届かないため、
+   字は3枚に分かれています。外(span)が退場の変形、中(i)が開幕の動き、
+   いちばん内(b)が色です。動く箱と色の箱を分けてあるのは、
+   background-clip:text を変形や動きの掛かった箱に重ねると、WebKit では
+   その箱が別の面に描かれて切り抜きが効かず、字がまるごと消えるためです。
+   色の箱は動かしません。
+   また、親の background-clip:text は子の字に届かないので、
    ここで各字に同じ色を持たせ、順番ぶん上へずらして1本の流れに戻します。 */
 .pro-fes span{
   display:inline-block;line-height:1;
@@ -285,6 +290,12 @@ p{margin:0}
                 calc(var(--exit,0) * -7vh),0)
     scale(calc(1 - var(--exit,0) * .22));
   opacity:calc(1 - var(--exit,0) * 1.35);
+}
+/* 動きの箱。動かないときも字の組みは同じにします。 */
+.pro-fes span > i{display:block;font-style:normal}
+/* 色の箱。変形も動きも掛けません。 */
+.pro-fes span b{
+  display:block;font-weight:inherit;
   background:var(--sweep-v);
   background-size:100% calc(var(--chars,4) * 1em);
   background-position:0 calc(var(--i,0) * -1em);
@@ -295,7 +306,6 @@ p{margin:0}
 @media (prefers-reduced-motion:no-preference){
   .pro-school{animation:arrive .6s ease-out .42s both}
   .pro-fes span > i{
-    display:block;font-style:normal;
     animation:slideFromRight .78s cubic-bezier(.16,1,.3,1) both;
     animation-delay:calc(.52s + var(--i,0) * .085s);
   }

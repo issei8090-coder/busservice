@@ -844,7 +844,11 @@ function setFestivalTitle(name) {
   characters.forEach((character, index) => {
     const cell = element("span");
     cell.style.setProperty("--i", String(index));
-    cell.append(element("i", null, character));
+    // 1字を3枚に分けます。外が退場の変形、中が開幕の動き、内が色です。
+    // 色は動かない箱に掛けます。理由は public.css の .pro-fes span b に書いてあります。
+    const move = element("i");
+    move.append(element("b", null, character));
+    cell.append(move);
     heading.append(cell);
   });
 }
