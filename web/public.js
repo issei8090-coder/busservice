@@ -129,6 +129,23 @@ function trainToStopURL(stop, departure) {
     + `${when}&hh=${String(Math.floor(by / 60)).padStart(2, "0")}&m1=${Math.floor((by % 60) / 10)}&m2=${(by % 60) % 10}&type=4`;
 }
 
+// 帰りの便。その乗り場に着いたあと、そこから乗れる電車を調べます。
+// バスを降りてから改札へ入るぶんを足して、出発時刻で引きます。行きの裏返しです。
+function trainFromStopURL(stop, arrival) {
+  if (!stop) return "";
+  const minutes = clockMinutes(arrival);
+  if (!Number.isFinite(minutes)) return "";
+  // 日をまたぐ組み方はしません。遅い便でもその日のうちで引きます。
+  const from = Math.min(23 * 60 + 59, minutes + (stop.walkMinutes || 0));
+  const parts = String(state.date || "").split("-");
+  const when = parts.length === 3
+    ? `&y=${parts[0]}&m=${parts[1]}&d=${parts[2]}`
+    : "";
+  // type=1 は「出発時刻で検索」です。
+  return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(`${stop.name}駅`)}`
+    + `${when}&hh=${String(Math.floor(from / 60)).padStart(2, "0")}&m1=${Math.floor((from % 60) / 10)}&m2=${(from % 60) % 10}&type=1`;
+}
+
 function mapButton(stop) {
   const url = mapURL(stop);
   if (!url) return null;
@@ -400,9 +417,10 @@ function resultCard(direction, journey, options = {}) {
   if (journey.trip.delayMinutes) {
     main.append(element("p", "result-note", `この便はおよそ${journey.trip.delayMinutes}分遅れています。`));
   }
-  // 便の右に、出かける前に確かめたい3つを並べます。
-  // 乗り場の場所、路線の具合、その便に間に合う電車。どれも外のページへ渡します。
-  if (direction === "inbound" && stop) {
+  // 便の右に、確かめたいことを並べます。どれも外のページへ渡します。
+  // 行きは、乗り場の場所、路線の具合、その便に間に合う電車。
+  // 帰りは、着いた駅から乗れる電車。乗り場は学校なので地図は出しません。
+  if (stop) {
     const links = element("div", "result-links");
     const add = (href, kind, label, note) => {
       if (!href) return;
@@ -416,12 +434,17 @@ function resultCard(direction, journey, options = {}) {
       if (note) link.append(element("span", null, note));
       links.append(link);
     };
-    add(mapURL(stop), "map", "乗り場の地図", `${stop.name}駅`);
-    if (stop.line) add(lineInfoURL(stop.line), "line", `${stop.line}の運行情報`, lineStatusWords[
-      (state.data?.lines || []).find((line) => line.name === stop.line)?.status
-    ] || "");
-    add(trainToStopURL(stop, journey.departure), "train", "この便に間に合う電車",
-      `${clockText(journey.departure)}までに${stop.name}駅へ`);
+    if (direction === "inbound") {
+      add(mapURL(stop), "map", "乗り場の地図", `${stop.name}駅`);
+      if (stop.line) add(lineInfoURL(stop.line), "line", `${stop.line}の運行情報`, lineStatusWords[
+        (state.data?.lines || []).find((line) => line.name === stop.line)?.status
+      ] || "");
+      add(trainToStopURL(stop, journey.departure), "train", "この便に間に合う電車",
+        `${clockText(journey.departure)}までに${stop.name}駅へ`);
+    } else {
+      add(trainFromStopURL(stop, journey.arrival), "train", "この便から乗れる電車",
+        `${clockText(journey.arrival)}に${stop.name}駅着`);
+    }
     if (links.childElementCount) main.append(links);
   }
 
