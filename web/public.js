@@ -1057,7 +1057,20 @@ function renderHeader() {
     "路線記章は Wikimedia Commons より。西武新宿線（Hide1228 / Syohei Arai）・国分寺線（Kaze315 / ButuCC）・西武池袋線（Hide1228 / Syohei Arai）・拝島線（Hide1228 / Syohei Arai） は CC BY-SA 4.0、他はパブリックドメインです。"));
 }
 
+// 時刻を選んでいるあいだは、画面を組み直しません。
+// 組み直すと時刻の欄ごと作り直されるので、機種のホイールがその場で閉じてしまいます。
+// iOS はホイールから指を離すたびに change を投げるので、ひと回しごとに閉じていました。
+// 待たせる先をここ1か所にしておけば、30秒ごとの更新も、読み直しも、
+// 表に戻ったときの読み直しも、選んでいる最中に横から閉じることがなくなります。
+let heldRender = false;
+const choosingTime = () => Boolean(document.activeElement?.matches?.('input[data-wish]'));
+
 function renderBodies() {
+  if (choosingTime()) {
+    heldRender = true;
+    return;
+  }
+  heldRender = false;
   const map = {
     inbound: $("#bodyInbound"),
     outbound: $("#bodyOutbound"),
@@ -1278,6 +1291,15 @@ document.addEventListener("change", (event) => {
   state.wish[input.dataset.wish] = input.value;
   writeQuery();
   renderBodies();
+});
+
+// 時刻の欄から離れたところで、待たせていた組み直しを流します。
+// focusout の時点ではまだ行き先が決まっていないので、決まってから見ます。
+document.addEventListener("focusout", (event) => {
+  if (!event.target.matches?.('input[data-wish]')) return;
+  setTimeout(() => {
+    if (heldRender && !choosingTime()) renderBodies();
+  }, 0);
 });
 
 setInterval(() => {
