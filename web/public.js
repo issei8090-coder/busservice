@@ -419,7 +419,10 @@ function resultCard(direction, journey, options = {}) {
   }
   // 便の右に、確かめたいことを並べます。どれも外のページへ渡します。
   // 行きは、乗り場の場所、路線の具合、その便に間に合う電車。
-  // 帰りは、着いた駅から乗れる電車。乗り場は学校なので地図は出しません。
+  // 帰りは、路線の具合と、着いた駅から乗れる電車。
+  // 路線の具合を電車より先に置くのは行きと同じです。乱れていれば、
+  // どの電車かより先にそれを知りたいためです。
+  // 地図は帰りには出しません。乗るのは学校で、駅の乗り場は降りる場所です。
   if (stop) {
     const links = element("div", "result-links");
     const add = (href, kind, label, note) => {
@@ -434,14 +437,18 @@ function resultCard(direction, journey, options = {}) {
       if (note) link.append(element("span", null, note));
       links.append(link);
     };
+    const addLine = () => {
+      if (!stop.line) return;
+      const status = (state.data?.lines || []).find((line) => line.name === stop.line)?.status;
+      add(lineInfoURL(stop.line), "line", `${stop.line}の運行情報`, lineStatusWords[status] || "");
+    };
     if (direction === "inbound") {
       add(mapURL(stop), "map", "乗り場の地図", `${stop.name}駅`);
-      if (stop.line) add(lineInfoURL(stop.line), "line", `${stop.line}の運行情報`, lineStatusWords[
-        (state.data?.lines || []).find((line) => line.name === stop.line)?.status
-      ] || "");
+      addLine();
       add(trainToStopURL(stop, journey.departure), "train", "この便に間に合う電車",
         `${clockText(journey.departure)}までに${stop.name}駅へ`);
     } else {
+      addLine();
       add(trainFromStopURL(stop, journey.arrival), "train", "この便から乗れる電車",
         `${clockText(journey.arrival)}に${stop.name}駅着`);
     }
