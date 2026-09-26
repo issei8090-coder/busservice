@@ -1309,9 +1309,12 @@ const BEATS = [
       if (!node) return;
       const rect = node.getBoundingClientRect();
       const vh = window.innerHeight;
-      const through = hold((vh - rect.top) / Math.max(1, vh + rect.height));
-      const enter = hold(through / beat.inTo);
-      const exit = hold((through - beat.outFrom) / (1 - beat.outFrom));
+      // 入り: 段の上端が画面の下から上へ来るまで。収まっていれば 1。
+      const appear = hold((vh - rect.top) / Math.max(1, vh));
+      // 出: 段が実際に画面の上へ抜けた割合。止まっていれば 0。
+      const past = hold(-rect.top / Math.max(1, rect.height));
+      const enter = hold(appear / beat.inTo);
+      const exit = hold((past - beat.outFrom) / (1 - beat.outFrom));
       node.style.setProperty("--enter", enter.toFixed(4));
       node.style.setProperty("--exit", exit.toFixed(4));
     });
