@@ -1,5 +1,6 @@
 .git
 school-bus-go.zip
 data/*.tmp
+data/session.key
 bus
 .DS_Store

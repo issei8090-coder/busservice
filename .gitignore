@@ -3,3 +3,7 @@ bus
 
 # macOSが作る一時ファイル
 .DS_Store
+
+# ログインの署名に使う鍵。中身は秘密で、置き場ごとに違ってよいものです。
+session.key
+data/session.key

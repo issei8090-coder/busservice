@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -23,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -1436,25 +1438,23 @@ type configuredUser struct {
 	PIN string `json:"pin"`
 }
 
-type authSession struct {
-	User      AuthUser
-	ExpiresAt time.Time
-}
-
 type loginAttempt struct {
 	Failures    int
 	LockedUntil time.Time
 }
 
+// ログインの記録はサーバーに持ちません。誰がいつまでかをクッキーに書き、
+// その中身に鍵で署名しておいて、受け取るたびに署名を照合します。
+// 覚えておくものが無いので、入れ替えや再起動でログインが切れません。
 type Auth struct {
 	mu       sync.Mutex
 	users    map[string]configuredUser
-	sessions map[string]authSession
+	key      []byte
 	attempts map[string]loginAttempt
 }
 
-func NewAuth() *Auth {
-	auth := &Auth{users: map[string]configuredUser{}, sessions: map[string]authSession{}, attempts: map[string]loginAttempt{}}
+func NewAuth(key []byte) *Auth {
+	auth := &Auth{users: map[string]configuredUser{}, key: key, attempts: map[string]loginAttempt{}}
 	var users []configuredUser
 	if raw := strings.TrimSpace(os.Getenv("APP_USERS")); raw != "" {
 		if err := json.Unmarshal([]byte(raw), &users); err != nil {
@@ -1503,13 +1503,23 @@ func (a *Auth) login(id, pin, address string) (AuthUser, string, error) {
 		return AuthUser{}, "", errors.New("職員番号または暗証番号が違います")
 	}
 	delete(a.attempts, attemptKey)
-	tokenBytes := make([]byte, 32)
-	if _, err := rand.Read(tokenBytes); err != nil {
-		return AuthUser{}, "", errors.New("ログインを開始できません")
-	}
-	token := hex.EncodeToString(tokenBytes)
-	a.sessions[token] = authSession{User: configured.AuthUser, ExpiresAt: now.Add(12 * time.Hour)}
-	return configured.AuthUser, token, nil
+	return configured.AuthUser, a.issue(configured.ID, now.Add(sessionLife)), nil
+}
+
+// ログインの有効期間。クッキーの寿命もこれに合わせます。
+const sessionLife = 12 * time.Hour
+
+// 札は「職員番号.期限.署名」の3つ組です。署名は前の2つに掛かります。
+// 点は16進にも10進にも出てこないので、区切りとして安全に使えます。
+func (a *Auth) issue(id string, expires time.Time) string {
+	body := hex.EncodeToString([]byte(id)) + "." + strconv.FormatInt(expires.Unix(), 10)
+	return body + "." + a.sign(body)
+}
+
+func (a *Auth) sign(body string) string {
+	mac := hmac.New(sha256.New, a.key)
+	mac.Write([]byte(body))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 func (a *Auth) user(r *http.Request) (AuthUser, bool) {
@@ -1517,22 +1527,47 @@ func (a *Auth) user(r *http.Request) (AuthUser, bool) {
 	if err != nil {
 		return AuthUser{}, false
 	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	session, exists := a.sessions[cookie.Value]
-	if !exists || time.Now().After(session.ExpiresAt) {
-		delete(a.sessions, cookie.Value)
+	id, ok := a.verify(cookie.Value)
+	if !ok {
 		return AuthUser{}, false
 	}
-	return session.User, true
+	// 名前と役目はクッキーではなく、いまのAPP_USERSから引き直します。
+	// 職員を外したり役目を変えたりしたときに、その場で効かせるためです。
+	// クッキーに書いてある役目を信じると、外した人がそのまま入れてしまいます。
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	configured, exists := a.users[id]
+	if !exists {
+		return AuthUser{}, false
+	}
+	return configured.AuthUser, true
 }
 
-func (a *Auth) logout(r *http.Request) {
-	if cookie, err := r.Cookie("bus_session"); err == nil {
-		a.mu.Lock()
-		delete(a.sessions, cookie.Value)
-		a.mu.Unlock()
+// 札を検めて、職員番号を返します。署名が合い、期限内のときだけです。
+func (a *Auth) verify(token string) (string, bool) {
+	// 署名は最後の点より後ろです。前の「職員番号.期限」が署名の対象になります。
+	cut := strings.LastIndex(token, ".")
+	if cut <= 0 {
+		return "", false
 	}
+	body, signature := token[:cut], token[cut+1:]
+	// 署名の照合は、合っているかどうかで時間が変わらない比べ方にします。
+	if !hmac.Equal([]byte(signature), []byte(a.sign(body))) {
+		return "", false
+	}
+	rawID, stamp, ok := strings.Cut(body, ".")
+	if !ok {
+		return "", false
+	}
+	expires, err := strconv.ParseInt(stamp, 10, 64)
+	if err != nil || time.Now().After(time.Unix(expires, 0)) {
+		return "", false
+	}
+	id, err := hex.DecodeString(rawID)
+	if err != nil {
+		return "", false
+	}
+	return string(id), true
 }
 
 type userContextKey struct{}
@@ -1593,7 +1628,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "bus_session", Value: token, Path: "/", HttpOnly: true, Secure: requestIsSecure(r), SameSite: http.SameSiteStrictMode, MaxAge: 12 * 60 * 60})
+	http.SetCookie(w, &http.Cookie{Name: "bus_session", Value: token, Path: "/", HttpOnly: true, Secure: requestIsSecure(r), SameSite: http.SameSiteStrictMode, MaxAge: int(sessionLife / time.Second)})
 	writeJSON(w, 200, map[string]any{"user": user})
 }
 
@@ -1606,8 +1641,8 @@ func requestIsSecure(r *http.Request) bool {
 	return strings.EqualFold(proto, "https")
 }
 
+// サーバーは何も覚えていないので、クッキーを消せばログアウトです。
 func (a *App) logout(w http.ResponseWriter, r *http.Request) {
-	a.auth.logout(r)
 	http.SetCookie(w, &http.Cookie{Name: "bus_session", Value: "", Path: "/", HttpOnly: true, Secure: requestIsSecure(r), SameSite: http.SameSiteStrictMode, MaxAge: -1})
 	writeJSON(w, 200, map[string]bool{"ok": true})
 }
@@ -1988,7 +2023,7 @@ func main() {
 	}
 	app := &App{
 		store:       store,
-		auth:        NewAuth(),
+		auth:        NewAuth(sessionKey(*dataPath)),
 		routingBase: envOr("ROUTING_API", "https://router.project-osrm.org"),
 		httpClient:  &http.Client{Timeout: 15 * time.Second},
 		// 運行情報はHUBBのtraininfo-api（JR東日本公式・公共交通オープンデータセンター・私鉄各社公式を統合、匿名GET）から取ります。
@@ -2073,6 +2108,29 @@ func main() {
 	server := &http.Server{Addr: ":" + port, Handler: securityHeaders(mux), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
 	log.Printf("一般用 http://localhost:%s/ 、ダイヤ管理 /diagram 、職員用 /staff で開始", port)
 	log.Fatal(server.ListenAndServe())
+}
+
+// ログインの署名に使う鍵。ダイヤと同じ永続ディスクに置き、無ければ作ります。
+// ここに残しておくことで、入れ替えや再起動をまたいでもログインが続きます。
+// 読み書きできないときは、その場かぎりの鍵で動きます。署名は成り立ちますが、
+// 次の起動で鍵が変わるので、そのときは全員ログインし直しになります。
+func sessionKey(dataPath string) []byte {
+	keyPath := filepath.Join(filepath.Dir(dataPath), "session.key")
+	if raw, err := os.ReadFile(keyPath); err == nil {
+		if key, err := hex.DecodeString(strings.TrimSpace(string(raw))); err == nil && len(key) == 32 {
+			return key
+		}
+		log.Printf("警告: %s を読めないので作り直します", keyPath)
+	}
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		log.Fatalf("ログインの鍵を作れません: %v", err)
+	}
+	// 鍵なので、持ち主だけが読める許可で置きます。
+	if err := os.WriteFile(keyPath, []byte(hex.EncodeToString(key)), 0o600); err != nil {
+		log.Printf("警告: ログインの鍵を保存できません(%v)。再起動のたびにログインし直しになります", err)
+	}
+	return key
 }
 
 func envOr(name, fallback string) string {
