@@ -1,0 +1,23 @@
+/* M PLUS 1（可変ウェイト 300–900）。SIL Open Font License 1.1。
+   このアプリで出る文字だけに絞ってあります（1601字・276KB）。
+   全字だと529KBを24回に分けて落とすことになるので、1本にまとめています。
+
+   お知らせや催しに新しい漢字を足して、そこだけ書体が変わって見えるときは
+   ./tools/build-font.sh を回し直してください。 */
+@font-face{
+  font-family:"M PLUS 1";
+  font-style:normal;
+  font-weight:300 900;
+  font-display:swap;
+  src:url(/assets/fonts/mplus1.woff2) format("woff2");
+}
+
+/* GO BEYOND の書体。Archivo Black（SIL Open Font License 1.1）を
+   その9文字ぶんだけ切り出しています。差し替えは tools/build-font.sh を見てください。 */
+@font-face{
+  font-family:"Display";
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url(/assets/fonts/archivo-goBeyond.woff2) format("woff2");
+}

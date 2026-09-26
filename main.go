@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -106,6 +107,13 @@ type AppSettings struct {
 	EventName     string `json:"eventName"`
 	EventSaturday string `json:"eventSaturday"`
 	EventSunday   string `json:"eventSunday"`
+	// 一般用画面の写真。管理から差し替えます。空なら同梱の既定を使います。
+	// 値はファイル名だけで、/media/ の下に置かれます。
+	HeroPhoto string `json:"heroPhoto"`
+	LeapPhoto string `json:"leapPhoto"`
+	// 委員長のお言葉。1行ずつ持ち、空の行は段落の間になります。
+	ChairWords []string `json:"chairWords"`
+	ChairName  string   `json:"chairName"`
 }
 
 type GeoPoint struct {
@@ -2033,6 +2041,10 @@ func main() {
 	mux.Handle("DELETE /api/crowd-hints/{id}", guard(app.crowdHintByID))
 	mux.Handle("GET /api/line-statuses", guard(app.lineStatuses))
 	mux.Handle("PUT /api/line-statuses", guard(app.lineStatuses))
+	mux.Handle("GET /api/guide/media", guard(app.guideMedia))
+	mux.Handle("POST /api/guide/media", app.require("admin")(http.HandlerFunc(app.guideMedia)))
+	mux.Handle("DELETE /api/guide/media", app.require("admin")(http.HandlerFunc(app.guideMedia)))
+	mux.HandleFunc("GET /media/{name}", app.serveMedia)
 	mux.Handle("GET /api/guide/event", guard(app.guideEvent))
 	mux.Handle("PATCH /api/guide/event", guard(app.guideEvent))
 	mux.Handle("GET /api/settings", app.require("admin", "driver", "viewer")(http.HandlerFunc(app.settings)))
@@ -2312,9 +2324,42 @@ func staticHandler(files fs.FS) http.Handler {
 				return
 			}
 		}
+		if compressible(r) {
+			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Add("Vary", "Accept-Encoding")
+			zw := gzip.NewWriter(w)
+			defer zw.Close()
+			fileServer.ServeHTTP(gzipWriter{ResponseWriter: w, w: zw}, r)
+			return
+		}
 		fileServer.ServeHTTP(w, r)
 	})
 }
+
+// テキストの静的ファイルだけ圧縮します。woff2・webp・pngは既に圧縮済みなので触りません。
+func compressible(r *http.Request) bool {
+	if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		return false
+	}
+	switch path.Ext(r.URL.Path) {
+	case ".css", ".js", ".svg", ".json", ".webmanifest", ".html":
+		return true
+	}
+	return false
+}
+
+// Content-Lengthは圧縮後に合わなくなるので落とします。
+type gzipWriter struct {
+	http.ResponseWriter
+	w *gzip.Writer
+}
+
+func (g gzipWriter) WriteHeader(status int) {
+	g.ResponseWriter.Header().Del("Content-Length")
+	g.ResponseWriter.WriteHeader(status)
+}
+
+func (g gzipWriter) Write(b []byte) (int, error) { return g.w.Write(b) }
 
 func sortPrograms(items []Program) {
 	sort.Slice(items, func(i, j int) bool {

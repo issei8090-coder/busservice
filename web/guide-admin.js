@@ -521,6 +521,8 @@ function renderEvent() {
   $("#eventName").value = state.settings.eventName || "";
   $("#eventSaturday").value = state.settings.eventSaturday || "";
   $("#eventSunday").value = state.settings.eventSunday || "";
+  $("#chairWords").value = state.settings.chairWords || "";
+  $("#chairName").value = state.settings.chairName || "";
 }
 
 /* ---------- 読み込み ---------- */
@@ -629,11 +631,14 @@ $("#saveEventButton").addEventListener("click", async () => {
         eventName: $("#eventName").value.trim(),
         eventSaturday: $("#eventSaturday").value,
         eventSunday: $("#eventSunday").value,
+        chairWords: $("#chairWords").value,
+        chairName: $("#chairName").value.trim(),
       }),
     });
     state.settings = saved || {};
+    renderEvent();
     showError("#eventError", "");
-    toast("開催日を保存しました");
+    toast("開催日とお言葉を保存しました");
   } catch (error) {
     showError("#eventError", error.message);
   }
@@ -741,3 +746,117 @@ document.addEventListener("click", async (event) => {
 });
 
 loadAll().catch((error) => toast(error.message, "stop"));
+
+
+/* ---------- 一般用の写真 ---------- */
+
+// 写真は保存ファイルの隣に置かれます。差し替えに再ビルドは要りません。
+async function loadMedia() {
+  const box = document.querySelector("#mediaSlots");
+  if (!box) return;
+  try {
+    const response = await fetch("/api/guide/media", { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error("写真の一覧を読み込めませんでした");
+    const data = await response.json();
+    renderMedia(data.items || []);
+  } catch (error) {
+    showMediaError(error.message);
+  }
+}
+
+function showMediaError(message) {
+  const box = document.querySelector("#mediaError");
+  if (!box) return;
+  box.textContent = message || "";
+  box.hidden = !message;
+  if (message) box.focus();
+}
+
+function renderMedia(items) {
+  const box = document.querySelector("#mediaSlots");
+  box.replaceChildren();
+  items.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "media-slot";
+
+    const shot = document.createElement("img");
+    shot.className = "media-shot";
+    shot.src = item.url;
+    shot.alt = "";
+    card.append(shot);
+
+    const body = document.createElement("div");
+    body.className = "media-body";
+    const name = document.createElement("strong");
+    name.textContent = item.label;
+    const state = document.createElement("p");
+    state.textContent = item.isCustom ? "差し替え済み" : "同梱の写真を使っています";
+    body.append(name, state);
+
+    const actions = document.createElement("div");
+    actions.className = "form-actions";
+
+    const pick = document.createElement("label");
+    pick.className = "button";
+    pick.textContent = "写真を選ぶ";
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/webp,image/jpeg,image/png";
+    input.hidden = true;
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (file) uploadMedia(item.slot, file);
+      input.value = "";
+    });
+    pick.append(input);
+    actions.append(pick);
+
+    if (item.isCustom) {
+      const reset = document.createElement("button");
+      reset.type = "button";
+      reset.className = "button";
+      reset.textContent = "同梱の写真に戻す";
+      reset.addEventListener("click", () => resetMedia(item.slot));
+      actions.append(reset);
+    }
+
+    body.append(actions);
+    card.append(body);
+    box.append(card);
+  });
+}
+
+async function uploadMedia(slot, file) {
+  showMediaError("");
+  const form = new FormData();
+  form.append("slot", slot);
+  form.append("file", file);
+  try {
+    const response = await fetch("/api/guide/media", { method: "POST", body: form });
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("写真の差し替えには管理者のログインが必要です。職員用の画面からログインしてください。");
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "写真を保存できませんでした");
+    renderMedia(data.items || []);
+  } catch (error) {
+    showMediaError(error.message);
+  }
+}
+
+async function resetMedia(slot) {
+  showMediaError("");
+  try {
+    const response = await fetch(`/api/guide/media?slot=${encodeURIComponent(slot)}`, { method: "DELETE" });
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("写真を戻すには管理者のログインが必要です。職員用の画面からログインしてください。");
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "戻せませんでした");
+    renderMedia(data.items || []);
+  } catch (error) {
+    showMediaError(error.message);
+  }
+}
+
+loadMedia();

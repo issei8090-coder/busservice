@@ -3604,8 +3604,12 @@
     "schoolLongitude": 0,
     "schoolRadius": 35,
     "eventName": "",
-    "eventSaturday": "",
-    "eventSunday": ""
+    "eventSaturday": "2026-10-03",
+    "eventSunday": "2026-10-04",
+    "heroPhoto": "",
+    "leapPhoto": "",
+    "chairWords": [],
+    "chairName": ""
   },
   "stops": [
     {
@@ -3675,5 +3679,192 @@
       "count": 1
     }
   ],
-  "lineStatuses": null
+  "lineStatuses": [
+    {
+      "railway": "tobu.tojo",
+      "group": "ふじみ野",
+      "badge": "tobu_tojo.svg",
+      "name": "東武東上線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "odpt.TokyoMetro.Fukutoshin",
+      "group": "ふじみ野",
+      "badge": "odpt_TokyoMetro_Fukutoshin.svg",
+      "name": "副都心線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "odpt.TokyoMetro.Yurakucho",
+      "group": "ふじみ野",
+      "badge": "odpt_TokyoMetro_Yurakucho.svg",
+      "name": "有楽町線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "tokyu.ty",
+      "group": "ふじみ野",
+      "badge": "tokyu_ty.svg",
+      "name": "東急東横線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "jreast.musashinoline",
+      "group": "ふじみ野",
+      "badge": "jreast_musashinoline.svg",
+      "name": "武蔵野線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "odpt.TokyoMetro.Marunouchi",
+      "group": "ふじみ野",
+      "badge": "odpt_TokyoMetro_Marunouchi.svg",
+      "name": "丸ノ内線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "jreast.kawagoeline",
+      "group": "南古谷",
+      "badge": "jreast_kawagoeline.svg",
+      "name": "JR川越線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "jreast.saikyoline",
+      "group": "南古谷",
+      "badge": "jreast_saikyoline.svg",
+      "name": "埼京線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "jreast.shonan-shinjukuline",
+      "group": "南古谷",
+      "badge": "jreast_shonan-shinjukuline.svg",
+      "name": "湘南新宿ライン",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "jreast.ueno-tokyoline",
+      "group": "南古谷",
+      "badge": "jreast_ueno-tokyoline.svg",
+      "name": "上野東京ライン",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "jreast.keihin-tohokuline",
+      "group": "南古谷",
+      "badge": "jreast_keihin-tohokuline.svg",
+      "name": "京浜東北線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "jreast.takasakiline",
+      "group": "南古谷",
+      "badge": "jreast_takasakiline.svg",
+      "name": "高崎線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "jreast.utsunomiyaline",
+      "group": "南古谷",
+      "badge": "jreast_utsunomiyaline.svg",
+      "name": "宇都宮線",
+      "status": "info",
+      "text": "宇都宮線は、烏山線内での保守工事等のため、９月２８日（月）および９月２９日（火）９時３０分頃から１５時２０分頃まで、宇都宮～宝積寺駅間で烏山線との直通列車を運休します。なお、運休区間のバスおよびタクシーによる代行輸送は行いません。",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "seibu.shinjuku",
+      "group": "本川越",
+      "badge": "seibu_shinjuku.svg",
+      "name": "西武新宿線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "seibu.kokubunji",
+      "group": "本川越",
+      "badge": "seibu_kokubunji.svg",
+      "name": "国分寺線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "seibu.ikebukuro",
+      "group": "本川越",
+      "badge": "seibu_ikebukuro.svg",
+      "name": "西武池袋線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "seibu.haijima",
+      "group": "本川越",
+      "badge": "seibu_haijima.svg",
+      "name": "拝島線",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    },
+    {
+      "railway": "jreast.chuoline_rapidservice",
+      "group": "本川越",
+      "badge": "jreast_chuoline_rapidservice.svg",
+      "name": "中央線快速",
+      "status": "normal",
+      "text": "",
+      "source": "traininfo",
+      "updatedAt": "2026-09-26T14:45:14+09:00"
+    }
+  ],
+  "lineAttribution": [
+    "JR東日本 運行情報ページの情報を利用しています",
+    "公共交通オープンデータセンターのデータを利用しています(事業者への問い合わせはご遠慮ください)",
+    "東急・小田急・東武・西武・京王・京急・相鉄・京成 各社公式運行情報の情報を利用しています",
+    "JR線の「遅延」は30分以上の遅れが対象です(私鉄各社は各社基準: 概ね10〜30分以上)"
+  ]
 }

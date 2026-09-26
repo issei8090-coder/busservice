@@ -13,6 +13,7 @@ const state = {
   stopTouched: { inbound: false, outbound: false },
   wish: { inbound: "", outbound: "" },
   program: "",
+  stage: "",
   table: { direction: "inbound", stop: "" },
   loading: true,
   error: "",
@@ -79,13 +80,53 @@ function stopInfo(name) {
 }
 
 // iPhoneとiPadはAppleマップ、それ以外はGoogleマップを開きます。
+// 座標が未登録のときは駅名で引きます。以前はここで空を返していたので、
+// 乗り場のデータに緯度経度が入るまでリンクが一度も出ませんでした。
 function mapURL(stop) {
-  if (!stop || (!stop.latitude && !stop.longitude)) return "";
-  const label = encodeURIComponent(`${stop.name} ${stop.place || "バス乗り場"}`);
+  if (!stop) return "";
+  const label = `${stop.name}駅 ${stop.place || "バス乗り場"}`;
   const apple = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
-  return apple
-    ? `https://maps.apple.com/?ll=${stop.latitude},${stop.longitude}&q=${label}`
-    : `https://www.google.com/maps/search/?api=1&query=${stop.latitude},${stop.longitude}`;
+  const located = Boolean(stop.latitude || stop.longitude);
+  if (apple) {
+    return located
+      ? `https://maps.apple.com/?ll=${stop.latitude},${stop.longitude}&q=${encodeURIComponent(label)}`
+      : `https://maps.apple.com/?q=${encodeURIComponent(label)}`;
+  }
+  return located
+    ? `https://www.google.com/maps/search/?api=1&query=${stop.latitude},${stop.longitude}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(label)}`;
+}
+
+// 運行情報の行き先。lines[].railway の頭（事業者）で引きます。
+// 既定は Yahoo!路線情報の関東エリアです。東武東上線・JR川越線・西武新宿線の
+// どれもこの1ページに載ることを確かめてあります。
+// 各社の公式ページへ変えたいときは、事業者ごとにここへURLを足してください
+// （公式サイトはURLが変わりやすいので、足すときは必ず開いて確かめてください）。
+const RAIL_INFO_DEFAULT = "https://transit.yahoo.co.jp/diainfo/area/4";
+const RAIL_INFO = {
+  jreast: "https://traininfo.jreast.co.jp/train_info/kanto.aspx",
+};
+
+function lineInfoURL(lineName) {
+  const found = (state.data?.lines || []).find((line) => line.name === lineName);
+  const operator = String(found?.railway || "").split(".")[0];
+  return RAIL_INFO[operator] || RAIL_INFO_DEFAULT;
+}
+
+// その乗り場に、バスの発車までに着く電車を調べます。
+// 到着時刻での検索ができるのは乗換案内なので、地図ではなくそちらへ渡します。
+function trainToStopURL(stop, departure) {
+  if (!stop) return "";
+  const minutes = clockMinutes(departure);
+  if (!Number.isFinite(minutes)) return "";
+  const by = Math.max(0, minutes - (stop.walkMinutes || 0));
+  const parts = String(state.date || "").split("-");
+  const when = parts.length === 3
+    ? `&y=${parts[0]}&m=${parts[1]}&d=${parts[2]}`
+    : "";
+  // type=4 は「到着時刻で検索」です。
+  return `https://transit.yahoo.co.jp/search/result?to=${encodeURIComponent(`${stop.name}駅`)}`
+    + `${when}&hh=${String(Math.floor(by / 60)).padStart(2, "0")}&m1=${Math.floor((by % 60) / 10)}&m2=${(by % 60) % 10}&type=4`;
 }
 
 function mapButton(stop) {
@@ -181,6 +222,14 @@ const lineStatusWords = {
   unknown: "情報なし",
 };
 
+// 駅の表示板と同じ記号。色だけに頼らず、形でも具合が分かるようにします。
+const lineStatusMarks = {
+  normal: "◯",
+  trouble: "✕",
+  info: "△",
+  unknown: "－",
+};
+
 const crowdWords = {
   calm: "ゆったりご乗車いただけます",
   crowded: "混み合う見込みです",
@@ -223,6 +272,33 @@ function sendSignal(direction, stopName, clock) {
 
 /* ---------- 画面の部品 ---------- */
 
+// 路線の色。同じ路線はアプリのどこでも同じ色にします。色が路線を表す約束です。
+// 各社の公式なラインカラーが分かったら、ここへ書き足してください。
+// どの色も、白文字を載せても、白い板の上に置いても 4.5:1 を保ちます。
+const LINE_COLORS = {
+  東武東上線: ["#0b7d88", "#064f63"],
+  JR川越線: ["#2f6bd8", "#1d3f95"],
+  西武新宿線: ["#c0356b", "#8a2350"],
+};
+const LINE_FALLBACK = [
+  ["#7a3fb8", "#4f2680"],
+  ["#9a6b05", "#6b4802"],
+  ["#0b7d88", "#064f63"],
+];
+
+function lineColor(lineName) {
+  if (LINE_COLORS[lineName]) return LINE_COLORS[lineName];
+  const names = [...new Set((state.data?.stops || []).map((item) => item.line).filter(Boolean))];
+  const index = Math.max(0, names.indexOf(lineName));
+  return LINE_FALLBACK[index % LINE_FALLBACK.length];
+}
+
+function paintLine(node, lineName) {
+  const [light, deep] = lineColor(lineName);
+  node.style.setProperty("--sc", light);
+  node.style.setProperty("--sc-deep", deep);
+}
+
 function stopPicker(direction) {
   const selected = state.stops[direction];
   const box = element("div", "picker stops");
@@ -232,6 +308,7 @@ function stopPicker(direction) {
     button.dataset.stop = stop.name;
     button.dataset.direction = direction;
     button.setAttribute("aria-pressed", String(selected === stop.name));
+    paintLine(button, stop.line);
     button.append(document.createTextNode(stop.name));
     if (stop.line) button.append(element("small", null, stop.line));
     box.append(button);
@@ -265,6 +342,17 @@ function field(title, node) {
   return box;
 }
 
+// 時刻を1文字ずつの要素にします。順番に立ち上げるためです。
+function timeDisplay(text) {
+  const strong = element("strong", "num");
+  [...text].forEach((character, index) => {
+    const cell = element("i", null, character);
+    cell.style.setProperty("--i", String(index));
+    strong.append(cell);
+  });
+  return strong;
+}
+
 function resultCard(direction, journey, options = {}) {
   const card = element("div", "result");
   const main = element("div", "result-main");
@@ -275,7 +363,7 @@ function resultCard(direction, journey, options = {}) {
     : `学校から ${journey.stop}${stop?.line ? `（${stop.line}）` : ""} へ`));
 
   const time = element("div", "result-time");
-  time.append(element("strong", "num", clockText(journey.departure)));
+  time.append(timeDisplay(clockText(journey.departure)));
   time.append(element("span", null, direction === "inbound" ? `${journey.stop} 発` : "学校 発"));
   if (viewingToday()) {
     const remaining = clockMinutes(journey.departure) - nowMinutes();
@@ -312,15 +400,67 @@ function resultCard(direction, journey, options = {}) {
   if (journey.trip.delayMinutes) {
     main.append(element("p", "result-note", `この便はおよそ${journey.trip.delayMinutes}分遅れています。`));
   }
+  // 便の右に、出かける前に確かめたい3つを並べます。
+  // 乗り場の場所、路線の具合、その便に間に合う電車。どれも外のページへ渡します。
+  if (direction === "inbound" && stop) {
+    const links = element("div", "result-links");
+    const add = (href, kind, label, note) => {
+      if (!href) return;
+      const link = document.createElement("a");
+      link.className = "result-link";
+      link.dataset.kind = kind;
+      link.href = href;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.append(element("strong", null, label));
+      if (note) link.append(element("span", null, note));
+      links.append(link);
+    };
+    add(mapURL(stop), "map", "乗り場の地図", `${stop.name}駅`);
+    if (stop.line) add(lineInfoURL(stop.line), "line", `${stop.line}の運行情報`, lineStatusWords[
+      (state.data?.lines || []).find((line) => line.name === stop.line)?.status
+    ] || "");
+    add(trainToStopURL(stop, journey.departure), "train", "この便に間に合う電車",
+      `${clockText(journey.departure)}までに${stop.name}駅へ`);
+    if (links.childElementCount) main.append(links);
+  }
+
   card.append(main);
+
+  // 着いたあとに見られる催し。何時に着くかが分かった直後が、いちばん知りたいときです。
+  if (direction === "inbound" && options.withPrograms) {
+    const arrival = clockMinutes(journey.arrival);
+    const later = programsForDay().filter((item) => {
+      const end = clockMinutes(item.end) ?? clockMinutes(item.start);
+      return end !== null && arrival !== null && end >= arrival;
+    });
+    const box = element("div", "result-after");
+    const head = element("h4", null, `${clockText(journey.arrival)}に着いてから見られる催し`);
+    box.append(head);
+    if (!later.length) {
+      box.append(element("p", "empty", "この時刻より後に始まる催しはありません。"));
+    } else {
+      const list = element("div", "after-list");
+      later.slice(0, 4).forEach((program) => {
+        const row = programRow(program);
+        // 押すと催しの入口へ渡し、その催しに間に合う便を出します。
+        row.dataset.jumpProgram = program.id;
+        list.append(row);
+      });
+      box.append(list);
+      if (later.length > 4) {
+        box.append(element("p", "after-more", `ほかに${later.length - 4}件あります。「催しに合わせて調べる」でご覧ください。`));
+      }
+    }
+    card.append(box);
+  }
 
   if (direction === "inbound" && stop) {
     const place = element("div", "result-place");
     place.append(element("strong", null, `乗り場　${stop.place || `${stop.name}駅`}`));
     if (stop.landmark) place.append(element("p", null, stop.landmark));
     if (stop.walkMinutes) place.append(element("p", "walk", `改札からおよそ徒歩${stop.walkMinutes}分です。発車の5分前までにお越しください。`));
-    const button = mapButton(stop);
-    if (button) place.append(button);
+    // 地図は便の右の「乗り場の地図」から開きます。同じ行き先を二度置きません。
     card.append(place);
   }
 
@@ -383,15 +523,15 @@ function renderJourneyBody(direction, container) {
   if (direction === "outbound" && stopName && stopName === state.stops.inbound && !state.stopTouched.outbound) {
     container.lastChild.append(element("p", "result-note", "行きと同じ駅を選んでいます。別の駅からお帰りの場合は選び直してください。"));
   }
+  if (!stopName) {
+    container.append(element("p", "empty", "まず駅をお選びください。"));
+    return;
+  }
+
   container.append(field(
     direction === "inbound" ? "何時ごろ学校に着きたいですか" : "何時ごろ学校を出発したいですか",
     timeRow(direction),
   ));
-
-  if (!stopName) {
-    container.append(element("p", "empty", "駅をお選びください。"));
-    return;
-  }
 
   const all = journeys(direction, stopName);
   if (!all.length) {
@@ -413,7 +553,8 @@ function renderJourneyBody(direction, container) {
         ? wish - clockMinutes(picked.main.arrival)
         : clockMinutes(picked.main.departure) - wish;
     }
-    container.append(resultCard(direction, picked.main, { late: picked.late, afterLast: picked.afterLast, gap }));
+    container.append(resultCard(direction, picked.main,
+      { late: picked.late, afterLast: picked.afterLast, gap, withPrograms: direction === "inbound" }));
     const follow = followList(direction, picked.rest);
     if (follow) container.append(follow);
   }
@@ -461,7 +602,9 @@ function renderTimetableBody(container) {
     button.type = "button";
     button.dataset.tableStop = stop.name;
     button.setAttribute("aria-pressed", String(state.table.stop === stop.name));
+    paintLine(button, stop.line);
     button.append(document.createTextNode(stop.name));
+    if (stop.line) button.append(element("small", null, stop.line));
     picker.append(button);
   });
   container.append(field("駅で絞り込む", picker));
@@ -518,8 +661,10 @@ function renderStopsBody(container) {
   const list = element("div", "stop-list");
   stops.forEach((stop) => {
     const item = element("div", "stop-item");
-    item.append(element("h3", null, `${stop.name}　${stop.place || "バス乗り場"}`));
+    paintLine(item, stop.line);
+    item.append(element("h3", null, stop.name));
     if (stop.line) item.append(element("p", "line-name", stop.line));
+    item.append(element("p", "stop-place", stop.place || "バス乗り場"));
     if (stop.landmark) item.append(element("p", null, stop.landmark));
     if (stop.walkMinutes) item.append(element("p", "walk", `改札からおよそ徒歩${stop.walkMinutes}分です。`));
     const button = mapButton(stop);
@@ -532,79 +677,248 @@ function renderStopsBody(container) {
 
 /* ---------- 催しに合わせる ---------- */
 
+// 催しに間に合わせるための余裕（分）。
+// バスを降りてから会場へ歩く時間があるので、開始と同時に着く便は勧めません。
+const PROGRAM_MARGIN = 10;
+
+// その日の催しを、時刻順に。ステージをまたいで並べるのは、
+// 来場者が見たいのは「何時に何があるか」であって、舞台の区分ではないためです。
+function programsForDay() {
+  return (state.data?.programs || [])
+    .filter((item) => !item.day || item.day === state.day)
+    .slice()
+    .sort((a, b) => (clockMinutes(a.start) ?? 0) - (clockMinutes(b.start) ?? 0));
+}
+
+function stageNames(items) {
+  return [...new Set(items.map((item) => item.stage).filter(Boolean))];
+}
+
+// 今日ぶんを見ているときだけ、開催中・終了が分かるようにします。
+function programPhase(program) {
+  if (!viewingToday()) return "";
+  const now = nowMinutes();
+  const from = clockMinutes(program.start);
+  const to = clockMinutes(program.end) ?? from;
+  if (from === null) return "";
+  if (now >= from && now <= to) return "now";
+  if (now > to) return "done";
+  if (from - now <= 30) return "soon";
+  return "";
+}
+
+const PHASE_WORDS = { now: "開催中", soon: "まもなく", done: "終了" };
+
+function programRow(program, { pressed = false } = {}) {
+  const button = element("button", "program");
+  button.type = "button";
+  button.dataset.program = program.id;
+  const phase = programPhase(program);
+  if (phase) button.dataset.phase = phase;
+  button.setAttribute("aria-pressed", String(pressed));
+
+  const when = element("span", "p-when");
+  when.append(element("b", "num", clockText(program.start)));
+  if (program.end) when.append(element("i", "num", clockText(program.end)));
+  button.append(when);
+
+  const body = element("span", "p-body");
+  body.append(element("strong", null, program.title));
+  const meta = element("span", "p-meta");
+  if (program.stage) meta.append(element("span", "p-stage", program.stage));
+  if (phase) meta.append(element("span", "p-phase", PHASE_WORDS[phase]));
+  const span = programLength(program);
+  if (span) meta.append(element("span", "p-span", span));
+  body.append(meta);
+  button.append(body);
+  return button;
+}
+
+function programLength(program) {
+  const from = clockMinutes(program.start);
+  const to = clockMinutes(program.end);
+  if (from === null || to === null || to <= from) return "";
+  const minutes = to - from;
+  return minutes >= 60
+    ? `${Math.floor(minutes / 60)}時間${minutes % 60 ? `${minutes % 60}分` : ""}`
+    : `${minutes}分`;
+}
+
 function renderEventBody(container) {
   container.replaceChildren();
-  const programs = state.data?.programs || [];
-  if (!programs.length) {
+  const all = programsForDay();
+  if (!all.length) {
     container.append(element("p", "empty", "この日の催しは準備中です。"));
     return;
   }
+
+  // ステージで絞れるようにします。2つ以上あるときだけ出します。
+  const stages = stageNames(all);
+  if (stages.length > 1) {
+    const picker = element("div", "picker stagebar");
+    const add = (value, label) => {
+      const button = element("button", null, label);
+      button.type = "button";
+      button.dataset.stage = value;
+      button.setAttribute("aria-pressed", String(state.stage === value));
+      picker.append(button);
+    };
+    add("", "すべて");
+    stages.forEach((stage) => add(stage, stage));
+    container.append(field("どの舞台をご覧になりますか", picker));
+  }
+
+  const shown = state.stage ? all.filter((item) => item.stage === state.stage) : all;
   const list = element("div", "program-list");
-  programs.forEach((program) => {
-    const button = element("button", "program");
-    button.type = "button";
-    button.dataset.program = program.id;
-    button.setAttribute("aria-pressed", String(state.program === program.id));
-    button.append(element("span", "time num", clockText(program.start)));
-    const body = element("span", "body");
-    body.append(element("strong", null, program.title));
-    body.append(element("span", null, `${program.stage}${program.end ? `　${clockText(program.start)}〜${clockText(program.end)}` : ""}`));
-    button.append(body);
-    list.append(button);
-  });
-  container.append(field("見たい催しをお選びください", list));
+  if (!shown.length) {
+    list.append(element("p", "empty", "この舞台の催しはありません。"));
+  }
+  shown.forEach((program) => list.append(programRow(program, { pressed: state.program === program.id })));
+  container.append(field(`この日の催し　${shown.length}件`, list));
 
-  const program = programs.find((item) => item.id === state.program);
-  if (!program) return;
+  const program = all.find((item) => item.id === state.program);
+  if (!program) {
+    container.append(element("p", "empty", "催しをお選びになると、間に合う便をご案内します。"));
+    return;
+  }
 
-  container.append(field("行き　どの駅からお越しになりますか", stopPicker("inbound")));
-  container.append(field("帰り　どの駅へお帰りになりますか", stopPicker("outbound")));
-  if (!state.stops.inbound && !state.stops.outbound) {
+  // 選んだ催しの詳しい内容。出演者や雨天時の扱いが書かれていることがあります。
+  const chosen = element("div", "program-detail");
+  chosen.append(element("strong", null, program.title));
+  const line = [program.stage, `${clockText(program.start)}${program.end ? `〜${clockText(program.end)}` : ""}`]
+    .filter(Boolean).join("　");
+  chosen.append(element("p", "p-line", line));
+  if (program.details) chosen.append(element("p", "p-details", program.details));
+  container.append(chosen);
+
+  container.append(field("どの駅からお越しになりますか", stopPicker("inbound")));
+  if (!state.stops.inbound) {
     container.append(element("p", "empty", "駅をお選びください。"));
     return;
   }
 
   const goingAll = journeys("inbound", state.stops.inbound).filter(running);
   const arriveBy = clockMinutes(program.start);
-  const going = goingAll.filter((item) => clockMinutes(item.arrival) !== null && clockMinutes(item.arrival) <= arriveBy);
+  const arrived = (item) => clockMinutes(item.arrival);
+  // 余裕をもって着く便。開始と同時に着く便はここに入りません。
+  const comfy = goingAll.filter((item) => arrived(item) !== null && arrived(item) <= arriveBy - PROGRAM_MARGIN);
+  // 間に合いはするが、ぎりぎりの便。
+  const tight = goingAll.filter((item) => arrived(item) !== null && arrived(item) <= arriveBy);
   const goBox = element("div", "field");
-  goBox.append(element("h3", null, "行き　この便で開始に間に合います"));
-  if (!state.stops.inbound) {
-    goBox.append(element("p", "empty", "行きの駅をお選びください。"));
-  } else if (going.length) {
-    goBox.append(resultCard("inbound", going[going.length - 1]));
+  goBox.append(element("h3", null, "この便で開始に間に合います"));
+  if (comfy.length) {
+    const pick = comfy[comfy.length - 1];
+    goBox.append(resultCard("inbound", pick));
+    const spare = arriveBy - arrived(pick);
+    goBox.append(element("p", "result-note", `開始の${spare}分前に着きます。`));
+  } else if (tight.length) {
+    // 余裕のある便が無いときだけ、ぎりぎりの便を出します。何が起きるかを先に書きます。
+    const pick = tight[tight.length - 1];
+    const spare = arriveBy - arrived(pick);
+    goBox.append(element("p", "result-note", spare > 0
+      ? `余裕をもって着く便がありません。この便は開始の${spare}分前に着きます。`
+      : "余裕をもって着く便がありません。この便は開始と同じ時刻に着きます。"));
+    goBox.append(resultCard("inbound", pick));
   } else {
     goBox.append(element("p", "empty", "開始までに学校へ着く便がありません。"));
   }
   container.append(goBox);
 
-  const endAt = clockMinutes(program.end) ?? arriveBy;
-  const backAll = journeys("outbound", state.stops.outbound).filter(running);
-  const back = backAll.find((item) => clockMinutes(item.departure) >= endAt);
-  const backBox = element("div", "field");
-  backBox.append(element("h3", null, "帰り　催しの終了後に出る便"));
-  if (!state.stops.outbound) {
-    backBox.append(element("p", "empty", "帰りの駅をお選びください。"));
-  } else if (back) {
-    backBox.append(resultCard("outbound", back));
-  } else {
-    backBox.append(element("p", "empty", "終了後に学校を出る便がありません。"));
-  }
-  container.append(backBox);
-
   if (state.stops.inbound) sendSignal("inbound", state.stops.inbound, clockText(program.start));
-  if (state.stops.outbound && program.end) sendSignal("outbound", state.stops.outbound, clockText(program.end));
 }
 
 /* ---------- 全体 ---------- */
 
-function renderHeader() {
+// 序の題字。縦に組むので、字数を渡して高さの上限を決めさせます。
+// 案内設定で別の名前を登録したときはそちらを出します。
+function setFestivalTitle(name) {
+  const heading = document.querySelector(".pro-fes");
+  if (!heading) return;
+  if (!heading.dataset.name) heading.dataset.name = heading.textContent.trim();
+  const title = (name || heading.dataset.name || "").trim();
+  if (!title) return;
+  const characters = [...title];
+  heading.style.setProperty("--chars", String(characters.length));
+  if (heading.children.length === characters.length && heading.textContent === title) return;
+  heading.replaceChildren();
+  characters.forEach((character, index) => {
+    const cell = element("span");
+    cell.style.setProperty("--i", String(index));
+    cell.append(element("i", null, character));
+    heading.append(cell);
+  });
+}
+
+// 曜日を1字にします。「土曜」→「土」。
+const shortDay = (day) => String(day || "").replace(/曜日?$/, "");
+
+// 開催日に添える一言。日付をそのまま鍵にします。
+// 序の日付と、ヒーローの日付選びの両方に出ます。増やすときはここへ1行足してください。
+const DAY_NOTES = {
+  "2026-10-04": "後夜祭 花火",
+};
+
+// 題字の右に、開催日を縦で添えます。
+// 右が空いたままだと、柿色の面に題字がぽつんと残って殺風景になります。
+// 日付は来場者がいちばん先に確かめることなので、飾りではなく案内として置きます。
+function renderPrologueDays() {
+  const box = document.querySelector("#proDays");
+  if (!box) return;
+  const days = state.days || [];
+  box.replaceChildren();
+  box.hidden = days.length === 0;
+  days.forEach((item, index) => {
+    const row = element("b", "pd-day");
+    row.style.setProperty("--i", String(index));
+    const parts = String(item.date || "").split("-").map(Number);
+    if (parts.length === 3) {
+      const line = element("span", "pd-line");
+      line.append(element("i", "pd-md", `${parts[1]}.${parts[2]}`));
+      line.append(element("span", "pd-dow", `（${shortDay(item.day)}）`));
+      row.append(line);
+    } else {
+      row.append(element("i", "pd-md", item.day || item.label || ""));
+    }
+    const note = DAY_NOTES[item.date];
+    if (note) row.append(element("span", "pd-note", note));
+    box.append(row);
+  });
+}
+
+// 管理から差し替えた写真を反映します。設定が無ければ同梱の既定のままです。
+function applyPhotos() {
   const settings = state.data?.settings || {};
-  const current = state.days.find((item) => item.date === state.date);
-  const name = settings.eventName ? `${settings.eventName}　` : "";
-  $("#eventLabel").textContent = current
-    ? `${name}${current.label}`
-    : `${name}${state.day}ダイヤ`;
+  const hero = document.querySelector("#heroPhoto");
+  if (hero && settings.heroPhoto) hero.style.backgroundImage = `url("${settings.heroPhoto}")`;
+  if (settings.leapPhoto) {
+    document.querySelectorAll(".pro-form .leap").forEach((node) => {
+      if (node.getAttribute("src") !== settings.leapPhoto) node.setAttribute("src", settings.leapPhoto);
+    });
+  }
+}
+
+function renderHeader() {
+  setFestivalTitle((state.data?.settings || {}).eventName);
+  applyPhotos();
+  renderChairWord();
+  renderPrologueDays();
+
+  // 入口のタグには、その日に実際にある数を出します。
+  // 数と単位を分けて持ちます。組版で数字だけを大きく見せるためです。
+  const tally = (list, unit) => (list || []).length ? { n: (list || []).length, unit } : null;
+  const counts = {
+    trips: tally(state.data?.trips, "便"),
+    stops: tally(state.data?.stops, "駅"),
+    programs: tally(state.data?.programs, "件"),
+  };
+  // 数と単位は分けて組みます。数字だけを大きく見せるためです。
+  document.querySelectorAll(".count[data-count]").forEach((slot) => {
+    const found = counts[slot.dataset.count];
+    slot.replaceChildren();
+    if (!found) return;
+    slot.append(element("b", "num", String(found.n)));
+    slot.append(element("i", "unit", found.unit));
+  });
 
   const bar = $("#lineBar");
   const lines = state.data?.lines || [];
@@ -612,13 +926,52 @@ function renderHeader() {
   bar.hidden = lines.length === 0;
   if (lines.length) {
     const inner = element("div", "inner");
+    inner.append(element("h2", "line-head", "電車の運行状況"));
+    // 1本でも乱れていれば、枠ごと目立たせます。
+    if (lines.some((line) => line.status === "trouble")) bar.dataset.alert = "1";
+    else delete bar.dataset.alert;
+
+    // 乗り場ごとにまとめます。来場者は自分の乗る駅から見るためです。
+    const groups = [];
     lines.forEach((line) => {
-      const item = element("span", "line-item");
-      item.dataset.status = line.status;
-      item.append(element("i"));
-      item.append(document.createTextNode(`${line.name}　${lineStatusWords[line.status] || "情報なし"}`));
-      inner.append(item);
+      const key = line.group || "";
+      let group = groups.find((item) => item.key === key);
+      if (!group) groups.push((group = { key, items: [] }));
+      group.items.push(line);
     });
+
+    groups.forEach((group) => {
+      const box = element("div", "line-group");
+      if (group.key) {
+        const stop = (state.data?.stops || []).find((item) => item.name === group.key);
+        const head = element("h3", "line-group-head", group.key);
+        if (stop?.line) head.append(element("span", null, stop.line));
+        box.append(head);
+      }
+      group.items.forEach((line) => {
+        const item = element("span", "line-item");
+        item.dataset.status = line.status;
+        // 路線記章。路線名がすぐ隣にあるので、読み上げには渡しません。
+        if (line.badge) {
+          const badge = document.createElement("img");
+          badge.className = "line-badge";
+          badge.src = `/assets/lines/${line.badge}`;
+          badge.alt = "";
+          badge.loading = "lazy";
+          badge.setAttribute("aria-hidden", "true");
+          item.append(badge);
+        }
+        item.append(element("b", "line-name", line.name));
+        // 記号は言葉の言い換えなので、読み上げには渡しません。
+        const mark = element("i", "line-mark", lineStatusMarks[line.status] || "－");
+        mark.setAttribute("aria-hidden", "true");
+        item.append(mark);
+        item.append(element("span", "line-state", lineStatusWords[line.status] || "情報なし"));
+        box.append(item);
+      });
+      inner.append(box);
+    });
+
     lines.filter((line) => line.status !== "normal" && line.text).forEach((line) => {
       inner.append(element("p", "line-detail", `${line.name}　${line.text}`));
     });
@@ -639,14 +992,28 @@ function renderHeader() {
 
   const dayBar = $("#dayBar");
   dayBar.replaceChildren();
-  dayBar.hidden = state.days.length < 2;
   state.days.forEach((item) => {
-    const button = element("button", null, item.label);
+    const button = element("button");
     button.type = "button";
     button.dataset.date = item.date;
     button.dataset.day = item.day;
     button.setAttribute("aria-pressed", String(item.date === state.date && item.day === state.day));
+    button.setAttribute("aria-label", item.label);
+    const parts = item.date.split("-").map(Number);
+    button.append(element("b", "d-day", item.day || item.label));
+    if (parts.length === 3) {
+      button.append(element("i", "d-date num", `${parts[1]}/${parts[2]}`));
+    }
+    // 後夜祭のある日には印をつけます。遅い便で帰る方が増えるので、選ぶ前に分かるようにします。
+    const note = DAY_NOTES[item.date];
+    if (note) button.append(element("span", "d-note", note));
     dayBar.append(button);
+  });
+
+  // 貼り付く見出しの実寸を飛び先の余白へ渡します。字の大きさが変わっても合います。
+  requestAnimationFrame(() => {
+    const height = dayBar.getBoundingClientRect().height;
+    if (height > 0) document.documentElement.style.setProperty("--dayhead", `${Math.round(height)}px`);
   });
 
   const foot = $("#updatedLabel");
@@ -657,6 +1024,10 @@ function renderHeader() {
   (state.data?.attribution || []).forEach((line) => {
     foot.append(element("small", "credit", line));
   });
+  // 路線記章のうち、CC BY-SA 4.0 のものは作者の表示が要ります。
+  // 本文は web/assets/lines/manifest.json の台帳から起こしています。
+  foot.append(element("small", "credit",
+    "路線記章は Wikimedia Commons より。西武新宿線（Hide1228 / Syohei Arai）・国分寺線（Kaze315 / ButuCC）・西武池袋線（Hide1228 / Syohei Arai）・拝島線（Hide1228 / Syohei Arai） は CC BY-SA 4.0、他はパブリックドメインです。"));
 }
 
 function renderBodies() {
@@ -668,9 +1039,11 @@ function renderBodies() {
     event: $("#bodyEvent"),
   };
   Object.entries(map).forEach(([mode, node]) => {
-    const head = document.querySelector(`.choice[data-mode="${mode}"] .choice-head`);
+    const section = document.querySelector(`.choice[data-mode="${mode}"]`);
+    const head = section.querySelector(".choice-head");
     const open = state.mode === mode;
     head.setAttribute("aria-expanded", String(open));
+    section.toggleAttribute("data-open", open);
     node.hidden = !open;
     if (!open) {
       node.replaceChildren();
@@ -706,7 +1079,7 @@ function buildDays(settings) {
   return days;
 }
 
-async function load() {
+async function load(options = {}) {
   try {
     const params = new URLSearchParams({ day: state.day });
     if (state.date) params.set("date", state.date);
@@ -721,7 +1094,7 @@ async function load() {
         state.day = target.day;
         state.date = target.date;
         state.loading = true;
-        return load();
+        return load(options);
       }
     }
     state.error = "";
@@ -729,6 +1102,15 @@ async function load() {
     state.error = `${error.message}。通信の状況をご確認ください。`;
   }
   state.loading = false;
+  if (options.quiet) {
+    // 書きかけの入力や、開いている操作面は触りません。消えてしまうためです。
+    // 時間とともに古くなる部分（運行情報・混雑・現在時刻）だけ差し替えます。
+    const busy = document.activeElement?.closest?.(".choice-body");
+    if (busy) {
+      renderHeader();
+      return;
+    }
+  }
   render();
 }
 
@@ -819,9 +1201,38 @@ document.addEventListener("click", (event) => {
     renderBodies();
     return;
   }
+  const jump = event.target.closest("button[data-jump-program]");
+  if (jump) {
+    state.program = jump.dataset.jumpProgram;
+    state.stage = "";
+    state.mode = "event";
+    writeQuery();
+    renderBodies();
+    const section = document.querySelector('.choice[data-mode="event"] .choice-head');
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
   const programButton = event.target.closest("button[data-program]");
   if (programButton) {
     state.program = state.program === programButton.dataset.program ? "" : programButton.dataset.program;
+    writeQuery();
+    renderBodies();
+    // 選んだ催しの詳細へ送ります。一覧が長いので、選んだ先が画面の外に出るためです。
+    if (state.program) {
+      requestAnimationFrame(() => {
+        document.querySelector(".program-detail")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+    return;
+  }
+  const stageButton = event.target.closest("button[data-stage]");
+  if (stageButton) {
+    state.stage = stageButton.dataset.stage;
+    // 絞り込みから外れた催しを選んだままにしません。
+    const stillShown = programsForDay().some((item) =>
+      item.id === state.program && (!state.stage || item.stage === state.stage));
+    if (!stillShown) state.program = "";
     writeQuery();
     renderBodies();
     return;
@@ -857,3 +1268,239 @@ document.addEventListener("visibilitychange", () => {
 readQuery();
 render();
 load();
+
+/* ---------- 地と図像 ---------- */
+
+// 面はひと続きです。序で柿色が差し、藍へ渡り、ヒーローの下で白へ明けます。
+// 濃さを決めるのはスクロールだけなので、読む人の手が進みを握ります。
+
+const calmMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+const hold = (value) => Math.min(1, Math.max(0, value));
+const ramp = (value, from, to) => hold((value - from) / (to - from));
+// 差して、保って、退く帯。
+const band = (value, up, upTo, down, downTo) => Math.min(ramp(value, up, upTo), 1 - ramp(value, down, downTo));
+
+// 段の進み具合。段が画面の下に現れたときが 0、上へ抜けきったときが 1。
+// inTo までに入りきり、outFrom から抜け始めます。その間が落ち着いた状態で、
+// ここが無いと帯と足が交わる瞬間が生まれません。
+const BEATS = [
+  { el: document.querySelector(".pro-name"), inTo: 0.22, outFrom: 0.52 },
+  { el: document.querySelector(".pro-leap"), inTo: 0.34, outFrom: 0.64 },
+  { el: document.querySelector(".pro-word"), inTo: 0.34, outFrom: 0.70 },
+];
+
+{
+  const root = document.documentElement;
+  const prologue = $("#prologue");
+  const hero = $("#hero");
+
+  let ticking = false;
+
+  const paint = () => {
+    ticking = false;
+    if (!prologue || !hero) return;
+
+    // 段ごとの出入り。入る量(--enter)と出る量(--exit)を渡し、組版側がそれを使います。
+    // 一度きりの合図ではなく連続した値なので、送り戻しても同じ絵になります。
+    const vh0 = window.innerHeight;
+    BEATS.forEach((beat) => {
+      const node = beat.el;
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const through = hold((vh - rect.top) / Math.max(1, vh + rect.height));
+      const enter = hold(through / beat.inTo);
+      const exit = hold((through - beat.outFrom) / (1 - beat.outFrom));
+      node.style.setProperty("--enter", enter.toFixed(4));
+      node.style.setProperty("--exit", exit.toFixed(4));
+    });
+
+    // 柿色から夜への渡りは、斜めの面が広がることで起こします。
+    // 題字の画面を送り終えるころに全面が夜になります。
+    const name = document.querySelector(".pro-name");
+    const wedge = name
+      ? hold(-name.getBoundingClientRect().top / Math.max(1, name.offsetHeight * 0.82))
+      : 1;
+    root.style.setProperty("--wedge", wedge.toFixed(4));
+
+    // 写真の視点。ヒーローが上がってくるあいだに、左上の空から右下のバスへ送ります。
+    const heroRect = hero.getBoundingClientRect();
+    hero.style.setProperty("--pan", hold((vh0 - heroRect.top) / vh0).toFixed(4));
+
+    // 案内が近づいたら空も明けます。案内は自前の白い面を持っているので、
+    // ここは面の下に濃い色を残さないための仕上げです。
+    const guide = document.querySelector(".guide");
+    const reach = guide ? guide.getBoundingClientRect().top / Math.max(1, window.innerHeight) : 9;
+    const clear = hold((0.9 - reach) / 0.9);
+
+    // 柿色は下に残したままにします。夜の面が上から覆うので、重ねの色が濁りません。
+    root.style.setProperty("--o-kaki", "1");
+    root.style.setProperty("--night-clear", (1 - clear).toFixed(3));
+
+  };
+
+  const schedule = () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(paint);
+  };
+  addEventListener("scroll", schedule, { passive: true });
+  addEventListener("resize", schedule);
+  schedule();
+}
+
+// ガラスの板は、画面に入ったところで一度だけ立ち上がります。
+if (!calmMotion.matches && "IntersectionObserver" in window) {
+  const watcher = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-in");
+      watcher.unobserve(entry.target);
+    });
+  }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+  document.querySelectorAll(".linebar,.notices,.lead,.foot,.foot-staff")
+    .forEach((node) => {
+      node.classList.add("rise");
+      watcher.observe(node);
+    });
+
+  const choices = $("#choices");
+  if (choices) {
+    choices.classList.add("is-armed");
+    const entry = new IntersectionObserver((rows) => {
+      rows.forEach((row) => {
+        if (!row.isIntersecting) return;
+        row.target.classList.add("is-in");
+        entry.unobserve(row.target);
+      });
+    }, { threshold: 0.1, rootMargin: "0px 0px -6% 0px" });
+    entry.observe(choices);
+  }
+}
+
+/* ---------- 跳ぶ姿と GO BEYOND ---------- */
+
+// 文字の中に見える人物を、背後の人物とぴたり重ねます。
+// 文字の箱から見た人物の箱の位置と寸法を測って、そのまま background に渡します。
+// 足もとの高さもここで出します。絵の中で靴はおおよそ下から2割の位置にあります。
+function fitBeyond() {
+  const figure = document.querySelector(".pro-form .leap");
+  const form = document.querySelector(".pro-form");
+  const line = document.querySelector(".beyond-line");
+  if (!figure || !form || !line) return;
+  if (!figure.complete || !figure.naturalWidth) return;
+
+  // 人物には飛び込みの変形が掛かっています。掛かったまま測ると基準がずれるので、
+  // 一度外して、落ち着いた位置の箱を測ります。
+  const had = figure.style.transform;
+  figure.style.transform = "none";
+  const fig = figure.getBoundingClientRect();
+  const box = form.getBoundingClientRect();
+  if (had) figure.style.transform = had;
+  else figure.style.removeProperty("transform");
+  if (!fig.width || !box.height) return;
+
+  // 帯は靴のあたりで交わらせます。絵の中で靴は下から2割ほどの位置です。
+  const feet = fig.top - box.top + fig.height * 0.78;
+  form.style.setProperty("--feet", `${feet.toFixed(1)}px`);
+  // 光も同じ高さを芯にします。帯と光と足がひとところで交わります。
+  form.style.setProperty("--glowTop", `${(feet - box.height * 0.09).toFixed(1)}px`);
+
+  // 帯（面）の丈は行（文字）の実寸に合わせます。別要素なので測って渡します。
+  // 行は傾けてあるので、傾ける前の丈を取ります。
+  const was = line.style.transform;
+  line.style.transform = "none";
+  form.style.setProperty("--lineH", `${line.getBoundingClientRect().height.toFixed(1)}px`);
+  if (was) line.style.transform = was;
+  else line.style.removeProperty("transform");
+}
+
+
+{
+  const figure = document.querySelector(".pro-form .leap");
+  if (figure) {
+    if (figure.complete) fitBeyond();
+    figure.addEventListener("load", fitBeyond);
+  }
+  addEventListener("resize", fitBeyond);
+  if (document.fonts?.ready) document.fonts.ready.then(fitBeyond);
+}
+
+/* ---------- 委員長のお言葉 ---------- */
+
+// お言葉は案内設定（/guide）から編集します。コードには持ちません。
+
+// 幕で入れ替えず、下へ並べます。1行ずつ現れるのは、手紙を読む速さに合わせるためです。
+function renderChairWord() {
+  const box = $("#proWord");
+  if (!box) return;
+  box.replaceChildren();
+
+  const lines = (state.data?.chairWords || []).map((line) => String(line).trim());
+  if (!lines.some((line) => line)) {
+    // 仮の文章は置きません。誰の言葉でもない文が本番に残ると困るためです。
+    const todo = element("div", "w-todo");
+    todo.append(element("strong", null, "【未設定】委員長のお言葉"));
+    todo.append(element("p", null, "案内設定（/guide）の「委員長のお言葉」に原文をお入れください。"));
+    box.append(todo);
+    return;
+  }
+
+  const run = element("div", "w-lines");
+  lines.forEach((line) => {
+    const row = element("p", "w-line", line);
+    if (!line) row.classList.add("is-blank");
+    run.append(row);
+  });
+  box.append(run);
+
+  const sign = element("footer", "w-sign", "けやき祭実行委員会　委員長");
+  const chairName = (state.data?.settings || {}).chairName || "";
+  if (chairName.trim()) sign.append(element("span", null, chairName.trim()));
+  box.append(sign);
+
+  if (calmMotion.matches || !("IntersectionObserver" in window)) {
+    run.querySelectorAll(".w-line").forEach((row) => row.classList.add("is-in"));
+    return;
+  }
+  const reader = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-in");
+      reader.unobserve(entry.target);
+    });
+  }, { threshold: 0.9, rootMargin: "0px 0px -18% 0px" });
+  run.querySelectorAll(".w-line").forEach((row) => reader.observe(row));
+}
+
+/* ---------- 定期の読み直し ---------- */
+
+// 運行情報と混雑は時間とともに古くなります。5分ごとに静かに取り直します。
+// 画面を見ていないあいだは止め、戻ってきたら取り直します。
+const REFRESH_MS = 5 * 60 * 1000;
+let refreshTimer = null;
+
+function startRefresh() {
+  stopRefresh();
+  refreshTimer = setInterval(() => {
+    if (document.hidden) return;
+    load({ quiet: true });
+  }, REFRESH_MS);
+}
+
+function stopRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = null;
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopRefresh();
+    return;
+  }
+  load({ quiet: true });
+  startRefresh();
+});
+
+startRefresh();

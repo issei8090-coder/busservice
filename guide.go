@@ -4,11 +4,16 @@ package main
 // 乗り場、区間の所要時間、お知らせ、混雑予測、沿線の運行情報を扱います。
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -74,6 +79,9 @@ type SearchSignal struct {
 // LineStatus は沿線の運行情報です。自動取得できないときは手入力を使います。
 type LineStatus struct {
 	Railway   string `json:"railway"`
+	// 乗り場のまとまりと、路線記章のファイル名です。
+	Group string `json:"group"`
+	Badge string `json:"badge"`
 	Name      string `json:"name"`
 	Status    string `json:"status"` // normal trouble unknown
 	Text      string `json:"text"`
@@ -606,13 +614,37 @@ func (s *Store) saveLineStatuses(input []LineStatus, source string) error {
 }
 
 // guideRailways は画面に出す路線です。traininfo-apiの路線IDと、来場者向けの表示名を対応させます。
+// Group は乗り場のまとまりです。直通先が乱れると到着にも響くので、同じ組に入れます。
+// Badge は路線記章のファイル名です。出典と利用条件は web/assets/lines/manifest.json にあります。
 var guideRailways = []struct {
-	ID   string
-	Name string
+	ID    string
+	Name  string
+	Group string
+	Badge string
 }{
-	{"tobu.tojo", "東武東上線"},
-	{"jreast.kawagoeline", "JR川越線"},
-	{"seibu.shinjuku", "西武新宿線"},
+	// ふじみ野（東武東上線）と、その直通先
+	{"tobu.tojo", "東武東上線", "ふじみ野", "tobu_tojo.svg"},
+	{"odpt.TokyoMetro.Fukutoshin", "副都心線", "ふじみ野", "odpt_TokyoMetro_Fukutoshin.svg"},
+	{"odpt.TokyoMetro.Yurakucho", "有楽町線", "ふじみ野", "odpt_TokyoMetro_Yurakucho.svg"},
+	{"tokyu.ty", "東急東横線", "ふじみ野", "tokyu_ty.svg"},
+	{"jreast.musashinoline", "武蔵野線", "ふじみ野", "jreast_musashinoline.svg"},
+	{"odpt.TokyoMetro.Marunouchi", "丸ノ内線", "ふじみ野", "odpt_TokyoMetro_Marunouchi.svg"},
+
+	// 南古谷（JR川越線）と、乗り継ぎの多い路線
+	{"jreast.kawagoeline", "JR川越線", "南古谷", "jreast_kawagoeline.svg"},
+	{"jreast.saikyoline", "埼京線", "南古谷", "jreast_saikyoline.svg"},
+	{"jreast.shonan-shinjukuline", "湘南新宿ライン", "南古谷", "jreast_shonan-shinjukuline.svg"},
+	{"jreast.ueno-tokyoline", "上野東京ライン", "南古谷", "jreast_ueno-tokyoline.svg"},
+	{"jreast.keihin-tohokuline", "京浜東北線", "南古谷", "jreast_keihin-tohokuline.svg"},
+	{"jreast.takasakiline", "高崎線", "南古谷", "jreast_takasakiline.svg"},
+	{"jreast.utsunomiyaline", "宇都宮線", "南古谷", "jreast_utsunomiyaline.svg"},
+
+	// 本川越（西武新宿線）と、西武の乗り継ぎ
+	{"seibu.shinjuku", "西武新宿線", "本川越", "seibu_shinjuku.svg"},
+	{"seibu.kokubunji", "国分寺線", "本川越", "seibu_kokubunji.svg"},
+	{"seibu.ikebukuro", "西武池袋線", "本川越", "seibu_ikebukuro.svg"},
+	{"seibu.haijima", "拝島線", "本川越", "seibu_haijima.svg"},
+	{"jreast.chuoline_rapidservice", "中央線快速", "本川越", "jreast_chuoline_rapidservice.svg"},
 }
 
 // trainInfoSnapshot は traininfo-api が返す運行情報です。
@@ -685,7 +717,10 @@ func (a *App) fetchLineStatuses() ([]LineStatus, []string, error) {
 	}
 	statuses := make([]LineStatus, 0, len(guideRailways))
 	for _, target := range guideRailways {
-		status := LineStatus{Railway: target.ID, Name: target.Name, Status: "unknown", Text: ""}
+		status := LineStatus{
+			Railway: target.ID, Name: target.Name, Status: "unknown", Text: "",
+			Group: target.Group, Badge: target.Badge,
+		}
 		if line, ok := byID[target.ID]; ok {
 			state, _ := guideLineStatus(line.Status)
 			status.Status = state
@@ -915,6 +950,15 @@ func (s *Store) historyCrowdWindows(date, day string) []CrowdWindow {
 	return windows
 }
 
+// publicChairWords は委員長のお言葉を行ごとに返します。
+func (s *Store) publicChairWords() []string {
+	words := s.settings().ChairWords
+	if words == nil {
+		return []string{}
+	}
+	return words
+}
+
 // publicEventSettings は一般用に出してよい設定だけを返します。学校の座標は含めません。
 func (s *Store) publicEventSettings() map[string]string {
 	settings := s.settings()
@@ -922,6 +966,10 @@ func (s *Store) publicEventSettings() map[string]string {
 		"eventName":     settings.EventName,
 		"eventSaturday": settings.EventSaturday,
 		"eventSunday":   settings.EventSunday,
+		// 写真は差し替えがあればそのURL、無ければ同梱の既定です。
+		"heroPhoto": s.mediaURL("hero"),
+		"leapPhoto": s.mediaURL("leap"),
+		"chairName": settings.ChairName,
 	}
 }
 
@@ -947,6 +995,7 @@ func (a *App) publicGuide(w http.ResponseWriter, r *http.Request) {
 		"lines":       a.store.listLineStatuses(),
 		"attribution": a.store.listAttribution(),
 		"settings":    a.store.publicEventSettings(),
+		"chairWords":  a.store.publicChairWords(),
 		"updatedAt":   time.Now().In(jst).Format(time.RFC3339),
 	})
 }
@@ -1136,10 +1185,12 @@ func (a *App) startLineStatusRefresh() {
 func (a *App) guideEvent(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		settings := a.store.settings()
-		writeJSON(w, 200, map[string]string{
+		writeJSON(w, 200, map[string]any{
 			"eventName":     settings.EventName,
 			"eventSaturday": settings.EventSaturday,
 			"eventSunday":   settings.EventSunday,
+			"chairWords":    strings.Join(settings.ChairWords, "\n"),
+			"chairName":     settings.ChairName,
 		})
 		return
 	}
@@ -1148,6 +1199,8 @@ func (a *App) guideEvent(w http.ResponseWriter, r *http.Request) {
 			EventName     string `json:"eventName"`
 			EventSaturday string `json:"eventSaturday"`
 			EventSunday   string `json:"eventSunday"`
+			ChairWords    string `json:"chairWords"`
+			ChairName     string `json:"chairName"`
 		}
 		if !decodeJSON(w, r, &input) {
 			return
@@ -1156,17 +1209,217 @@ func (a *App) guideEvent(w http.ResponseWriter, r *http.Request) {
 		settings.EventName = input.EventName
 		settings.EventSaturday = input.EventSaturday
 		settings.EventSunday = input.EventSunday
+		// お言葉は改行で1行ずつに分けます。末尾の空行は落とします。
+		settings.ChairWords = splitChairWords(input.ChairWords)
+		settings.ChairName = strings.TrimSpace(input.ChairName)
 		saved, err := a.store.saveSettings(settings)
 		if err != nil {
 			writeJSON(w, 400, map[string]string{"error": err.Error()})
 			return
 		}
-		writeJSON(w, 200, map[string]string{
+		writeJSON(w, 200, map[string]any{
 			"eventName":     saved.EventName,
 			"eventSaturday": saved.EventSaturday,
 			"eventSunday":   saved.EventSunday,
+			"chairWords":    strings.Join(saved.ChairWords, "\n"),
+			"chairName":     saved.ChairName,
 		})
 		return
 	}
 	http.NotFound(w, r)
+}
+
+/* ---------- 一般用の写真 ---------- */
+
+// 写真は go:embed に焼かず、保存ファイルの隣の media/ に置きます。
+// こうしておくと、差し替えに再ビルドが要りません。
+func (s *Store) mediaDir() string {
+	return filepath.Join(filepath.Dir(s.filePath), "media")
+}
+
+// mediaSlots は差し替えできる写真の一覧です。増やすときはここに足します。
+var mediaSlots = map[string]struct {
+	Label   string
+	Default string
+}{
+	"hero": {Label: "バスの写真（案内の入口）", Default: "/assets/brand/buses.webp"},
+	"leap": {Label: "跳ぶ生徒（序）", Default: "/assets/brand/student-leap.webp"},
+}
+
+// mediaURL は、差し替えがあればそのURLを、無ければ同梱の既定を返します。
+func (s *Store) mediaURL(slot string) string {
+	settings := s.settings()
+	name := ""
+	switch slot {
+	case "hero":
+		name = settings.HeroPhoto
+	case "leap":
+		name = settings.LeapPhoto
+	}
+	if name != "" {
+		return "/media/" + name
+	}
+	return mediaSlots[slot].Default
+}
+
+// serveMedia は差し替えた写真を返します。ファイル名は保存時に作った形しか受けません。
+func (a *App) serveMedia(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name == "" || !mediaNamePattern.MatchString(name) {
+		http.NotFound(w, r)
+		return
+	}
+	full := filepath.Join(a.store.mediaDir(), name)
+	// 名前に日付とハッシュが入るので、差し替えると別のURLになります。長く持たせて構いません。
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	http.ServeFile(w, r, full)
+}
+
+var mediaNamePattern = regexp.MustCompile(`^(hero|leap)-[0-9a-f]{12}\.(webp|jpg|png)$`)
+
+// guideMedia は写真の一覧・差し替え・既定へ戻す、をまとめて受けます。
+func (a *App) guideMedia(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		a.writeMediaList(w)
+	case http.MethodPost:
+		a.uploadMedia(w, r)
+	case http.MethodDelete:
+		a.resetMedia(w, r)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func (a *App) writeMediaList(w http.ResponseWriter) {
+	settings := a.store.settings()
+	items := []map[string]any{}
+	for _, slot := range []string{"hero", "leap"} {
+		custom := settings.HeroPhoto
+		if slot == "leap" {
+			custom = settings.LeapPhoto
+		}
+		items = append(items, map[string]any{
+			"slot":     slot,
+			"label":    mediaSlots[slot].Label,
+			"url":      a.store.mediaURL(slot),
+			"isCustom": custom != "",
+		})
+	}
+	writeJSON(w, 200, map[string]any{"items": items})
+}
+
+func (a *App) uploadMedia(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(9 << 20); err != nil {
+		writeJSON(w, 400, map[string]string{"error": "写真を受信できません"})
+		return
+	}
+	slot := strings.TrimSpace(r.FormValue("slot"))
+	if _, ok := mediaSlots[slot]; !ok {
+		writeJSON(w, 400, map[string]string{"error": "差し替える場所が不明です"})
+		return
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		writeJSON(w, 400, map[string]string{"error": "写真を選択してください"})
+		return
+	}
+	defer file.Close()
+
+	// 8MBまで。拡張子ではなく中身で種類を見ます。名前は偽れるためです。
+	body, err := io.ReadAll(io.LimitReader(file, 8<<20+1))
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": "写真を読み取れません"})
+		return
+	}
+	if len(body) > 8<<20 {
+		writeJSON(w, 400, map[string]string{"error": "写真は8MBまでです"})
+		return
+	}
+	ext := ""
+	switch http.DetectContentType(body) {
+	case "image/webp":
+		ext = "webp"
+	case "image/jpeg":
+		ext = "jpg"
+	case "image/png":
+		ext = "png"
+	default:
+		writeJSON(w, 400, map[string]string{"error": "webp・jpg・png のいずれかをお選びください"})
+		return
+	}
+
+	if err := os.MkdirAll(a.store.mediaDir(), 0o755); err != nil {
+		writeJSON(w, 500, map[string]string{"error": "保存先を作れません"})
+		return
+	}
+	sum := sha256.Sum256(body)
+	name := fmt.Sprintf("%s-%s.%s", slot, hex.EncodeToString(sum[:6]), ext)
+	if err := os.WriteFile(filepath.Join(a.store.mediaDir(), name), body, 0o644); err != nil {
+		writeJSON(w, 500, map[string]string{"error": "写真を保存できません"})
+		return
+	}
+
+	settings := a.store.settings()
+	previous := ""
+	switch slot {
+	case "hero":
+		previous, settings.HeroPhoto = settings.HeroPhoto, name
+	case "leap":
+		previous, settings.LeapPhoto = settings.LeapPhoto, name
+	}
+	if _, err := a.store.saveSettings(settings); err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	// 前の写真は誰も参照しなくなるので片付けます。
+	if previous != "" && previous != name && mediaNamePattern.MatchString(previous) {
+		os.Remove(filepath.Join(a.store.mediaDir(), previous))
+	}
+	a.writeMediaList(w)
+}
+
+func (a *App) resetMedia(w http.ResponseWriter, r *http.Request) {
+	slot := strings.TrimSpace(r.URL.Query().Get("slot"))
+	if _, ok := mediaSlots[slot]; !ok {
+		writeJSON(w, 400, map[string]string{"error": "戻す場所が不明です"})
+		return
+	}
+	settings := a.store.settings()
+	previous := ""
+	switch slot {
+	case "hero":
+		previous, settings.HeroPhoto = settings.HeroPhoto, ""
+	case "leap":
+		previous, settings.LeapPhoto = settings.LeapPhoto, ""
+	}
+	if _, err := a.store.saveSettings(settings); err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	if previous != "" && mediaNamePattern.MatchString(previous) {
+		os.Remove(filepath.Join(a.store.mediaDir(), previous))
+	}
+	a.writeMediaList(w)
+}
+
+
+// splitChairWords は入力の改行を1行ずつに分けます。
+// 途中の空行は段落の間として残し、前後の余分な空行だけ落とします。
+func splitChairWords(text string) []string {
+	raw := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	lines := make([]string, 0, len(raw))
+	for _, line := range raw {
+		lines = append(lines, strings.TrimSpace(line))
+	}
+	for len(lines) > 0 && lines[0] == "" {
+		lines = lines[1:]
+	}
+	for len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines) > 60 {
+		lines = lines[:60]
+	}
+	return lines
 }

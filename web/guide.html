@@ -45,7 +45,25 @@
             <label><span class="field-label">土曜ダイヤの日</span><input id="eventSaturday" type="date"></label>
             <label><span class="field-label">日曜ダイヤの日</span><input id="eventSunday" type="date"></label>
           </div>
-          <div class="form-actions"><button type="button" class="button primary" id="saveEventButton">開催日を保存</button></div>
+          <div class="form-grid">
+            <label class="field-wide"><span class="field-label">委員長のお言葉</span>
+              <textarea id="chairWords" rows="9" placeholder="1行ずつ入力してください。&#10;空の行を入れると段落の間になります。"></textarea>
+              <small class="field-note">来場者の画面では1行ずつ現れます。中央揃えなので、1行16字くらいまでにすると折り返しません。</small>
+            </label>
+            <label><span class="field-label">委員長のお名前</span><input id="chairName" type="text" maxlength="40" placeholder="姓 名"></label>
+          </div>
+          <div class="form-actions"><button type="button" class="button primary" id="saveEventButton">開催日とお言葉を保存</button></div>
+        </div>
+      </section>
+
+      <section class="panel" id="mediaPanel">
+        <div class="panel-heading">
+          <h2>写真</h2>
+          <p>一般用の画面で使う写真を差し替えます。webp・jpg・png、8MBまで。保存すると、来場者の画面にすぐ反映されます。<strong>写真の差し替えだけは管理者のログインが必要です。</strong></p>
+        </div>
+        <div class="panel-body">
+          <div class="form-error" id="mediaError" role="alert" tabindex="-1" hidden></div>
+          <div class="media-slots" id="mediaSlots"></div>
         </div>
       </section>
 

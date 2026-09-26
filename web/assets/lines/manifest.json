@@ -1,0 +1,96 @@
+{
+  "tobu.tojo": {
+    "file": "tobu_tojo.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Tobu_Tojo_Line_(TJ)_symbol.svg"
+  },
+  "odpt.TokyoMetro.Fukutoshin": {
+    "file": "odpt_TokyoMetro_Fukutoshin.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Logo_of_Tokyo_Metro_Fukutoshin_Line.svg"
+  },
+  "odpt.TokyoMetro.Yurakucho": {
+    "file": "odpt_TokyoMetro_Yurakucho.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Logo_of_Tokyo_Metro_Y%C5%ABrakuch%C5%8D_Line.svg"
+  },
+  "tokyu.ty": {
+    "file": "tokyu_ty.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Tokyu_TY_line_symbol.svg"
+  },
+  "jreast.musashinoline": {
+    "file": "jreast_musashinoline.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:JR_JM_line_symbol.svg"
+  },
+  "odpt.TokyoMetro.Marunouchi": {
+    "file": "odpt_TokyoMetro_Marunouchi.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Logo_of_Tokyo_Metro_Marunouchi_Line.svg"
+  },
+  "jreast.kawagoeline": {
+    "file": "jreast_kawagoeline.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:JR_JA_line_symbol.svg"
+  },
+  "jreast.saikyoline": {
+    "file": "jreast_saikyoline.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:JR_JA_line_symbol.svg"
+  },
+  "jreast.shonan-shinjukuline": {
+    "file": "jreast_shonan-shinjukuline.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:JR_JS_line_symbol.svg"
+  },
+  "jreast.ueno-tokyoline": {
+    "file": "jreast_ueno-tokyoline.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:JR_JU_line_symbol.svg"
+  },
+  "jreast.keihin-tohokuline": {
+    "file": "jreast_keihin-tohokuline.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:JR_JK_line_symbol.svg"
+  },
+  "jreast.takasakiline": {
+    "file": "jreast_takasakiline.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:JR_JU_line_symbol.svg"
+  },
+  "jreast.utsunomiyaline": {
+    "file": "jreast_utsunomiyaline.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:JR_JU_line_symbol.svg"
+  },
+  "seibu.shinjuku": {
+    "file": "seibu_shinjuku.svg",
+    "source": "https://commons.wikimedia.org/wiki/File:SeibuShinjuku.svg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Hide1228 / Syohei Arai"
+  },
+  "seibu.kokubunji": {
+    "file": "seibu_kokubunji.svg",
+    "source": "https://commons.wikimedia.org/wiki/File:SeibuKokubunji.svg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Kaze315 / ButuCC"
+  },
+  "seibu.ikebukuro": {
+    "file": "seibu_ikebukuro.svg",
+    "source": "https://commons.wikimedia.org/wiki/File:SeibuIkebukuro.svg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Hide1228 / Syohei Arai"
+  },
+  "seibu.haijima": {
+    "file": "seibu_haijima.svg",
+    "source": "https://commons.wikimedia.org/wiki/File:SeibuShinjuku.svg",
+    "license": "CC BY-SA 4.0",
+    "artist": "Hide1228 / Syohei Arai"
+  },
+  "jreast.chuoline_rapidservice": {
+    "file": "jreast_chuoline_rapidservice.svg",
+    "license": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:JR_JC_line_symbol.svg"
+  }
+}
