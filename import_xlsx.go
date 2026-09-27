@@ -17,10 +17,14 @@ package main
 //   - 15行目が「回送」なら復路は回送、「団体専用」なら復路は団体専用
 //   - 学校発が無い便（車庫から駅へ迎えに行く便）は往路なし
 //
-// 経由便は乗車人数を分けて数えるため、駅ごとに別の便として登録します。
-// 例 学校 → 本川越 → 南古谷 → 学校 は「学校 → 本川越 → 学校」と
-// 「南古谷 → 学校」の2便にします。車庫の出入りは回送なので、
-// 便は学校を起点にしたまま、時刻は詳細情報へ残します。
+// 経由のある一回りは、乗り降りする区間ごとに片道の便へ分けます。
+// 乗車人数を駅ごとに数えるためです。例 学校 → 本川越 → 南古谷 → 学校 は
+// 「学校 → 本川越」「本川越 →（南古谷経由）→ 学校」「南古谷 → 学校」の3便です。
+// 経路の中の「（南古谷経由）」は通るだけの駅の印で、停まる駅として数えません。
+//
+// 車庫の区間は全て回送です。学校に寄らず駅へ迎えに行く一回りだけ、
+// 車庫から最初の駅までを1便として登録します。車庫と学校は同じ場所で
+// 所要0分なので、車庫と学校の行き来は便にせず、詳細情報へ時刻を残します。
 
 import (
 	"encoding/xml"
@@ -50,6 +54,9 @@ const (
 )
 
 const afterPartyMark = "後夜祭"
+
+// garageNode は車庫です。学校発が無い一回りは、車庫発の回送便として登録します。
+const garageNode = "車庫"
 
 // cellValue は1つの枠の中身です。時刻と、時刻以外の文字を分けて持ちます。
 type cellValue struct {
@@ -202,6 +209,16 @@ func (t columnTrip) destination() stationStop {
 	return t.OutboundVia
 }
 
+// firstStation は最初に着く駅です。車庫発の回送便の行き先になります。
+func (t columnTrip) firstStation() stationStop {
+	for _, stop := range []stationStop{t.Fujimino, t.OutboundVia, t.Honkawagoe, t.InboundVia} {
+		if stop.Arrival.Clock != "" {
+			return stop
+		}
+	}
+	return stationStop{}
+}
+
 // outboundType は往路の便種別です。発番が「回送」なら回送になります。
 func (t columnTrip) outboundType() string {
 	if strings.Contains(t.BoardingNumber, "回送") {
@@ -312,16 +329,19 @@ func (t columnTrip) templates(nextColumn func() int) []Template {
 	}
 	outboundVia := !t.OutboundVia.empty() && t.OutboundVia != destination
 	inboundVia := !t.InboundVia.empty() && t.InboundVia != destination
-	if !outboundVia && !inboundVia {
-		return []Template{t.roundTemplate(destination, nextColumn())}
-	}
-	list := make([]Template, 0, 4)
+	list := make([]Template, 0, 5)
 	add := func(item Template, ok bool) {
 		if !ok {
 			return
 		}
 		item.ColumnNo = nextColumn()
 		list = append(list, item)
+	}
+	// 学校発が無い一回りは、車庫から駅へ向かう回送を1便として登録します。
+	add(t.garageLegTemplate(t.firstStation()))
+	if !outboundVia && !inboundVia {
+		add(t.roundTemplate(destination), true)
+		return list
 	}
 	if outboundVia {
 		add(t.outboundLegTemplate(t.OutboundVia, destination))
@@ -336,7 +356,7 @@ func (t columnTrip) templates(nextColumn func() int) []Template {
 
 // roundTemplate は学校と目的の駅を往復する便です。
 // 学校発が無ければ駅から学校へ向かう迎えの便、学校着が無ければ片道の便になります。
-func (t columnTrip) roundTemplate(stop stationStop, column int) Template {
+func (t columnTrip) roundTemplate(stop stationStop) Template {
 	hasOutbound := t.SchoolDeparture.Clock != ""
 	hasInbound := t.SchoolArrival.Clock != ""
 	names := make([]string, 0, 3)
@@ -348,7 +368,7 @@ func (t columnTrip) roundTemplate(stop stationStop, column int) Template {
 		names = append(names, schoolNode)
 	}
 	item := Template{
-		Day: t.Day, OperationNo: t.Operation, ColumnNo: column,
+		Day: t.Day, OperationNo: t.Operation,
 		Line:         t.lineName(),
 		Route:        strings.Join(names, " → "),
 		OutboundType: "none",
@@ -366,12 +386,29 @@ func (t columnTrip) roundTemplate(stop stationStop, column int) Template {
 	}
 	item.PlannedDeparture = firstClock(t.SchoolDeparture.Clock, stop.Depart.Clock, t.GarageDepart.Clock)
 	item.PlannedArrival = firstClock(t.SchoolArrival.Clock, stop.Arrival.Clock)
-	extra := make([]string, 0, 1)
-	if !hasOutbound && t.GarageDepart.Clock != "" {
-		extra = append(extra, "車庫から"+stop.Name+"へ回送")
-	}
-	item.Details = t.notes(extra...)
+	item.Details = t.notes()
 	return item
+}
+
+// garageLegTemplate は車庫から駅へ向かう回送の便です。
+// 学校発が無い一回り（駅へ迎えに行く便）だけ作ります。車庫の区間は全て回送です。
+func (t columnTrip) garageLegTemplate(stop stationStop) (Template, bool) {
+	if t.SchoolDeparture.Clock != "" || t.GarageDepart.Clock == "" || stop.Arrival.Clock == "" {
+		return Template{}, false
+	}
+	item := Template{
+		Day: t.Day, OperationNo: t.Operation,
+		Line:              t.lineName(),
+		Route:             garageNode + " → " + stop.Name,
+		OutboundType:      "deadhead",
+		InboundType:       "none",
+		OutboundDeparture: t.GarageDepart.Clock,
+		OutboundArrival:   stop.Arrival.Clock,
+		PlannedDeparture:  t.GarageDepart.Clock,
+		PlannedArrival:    stop.Arrival.Clock,
+	}
+	item.Details = t.notes("車庫から" + stop.Name + "へ回送")
+	return item, true
 }
 
 // outboundLegTemplate は学校から駅へ向かう片道の便です。

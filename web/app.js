@@ -1161,6 +1161,7 @@ function routeText(line, shape) {
 	// 書き方は取り込みと同じにします。「学校 → （南古谷経由）→ 本川越」です。
 	const out = item.via && item.viaOn === "outbound" ? `（${item.via}）→ ` : "";
 	const back = item.via && item.viaOn === "inbound" ? `（${item.via}）→ ` : "";
+	if (shape === "garage") return `車庫 → ${item.station}`;
 	if (shape === "outbound") return `学校 → ${out}${item.station}`;
 	if (shape === "inbound") return `${item.station} → ${back}学校`;
 	return `学校 → ${out}${item.station} → ${back}学校`;
@@ -1190,6 +1191,7 @@ function lineFromRoute(route) {
 function shapeFromRoute(route) {
 	const nodes = String(route || "").split("→").map((part) => part.trim()).filter(Boolean);
 	if (nodes.length < 2) return "round";
+	if (nodes[0] === "車庫") return "garage";
 	const head = nodes[0] === "学校", tail = nodes[nodes.length - 1] === "学校";
 	if (head && tail) return "round";
 	if (head) return "outbound";
@@ -1273,6 +1275,11 @@ function editTemplate(item) {
 // 向きに合わせて、使わない便種別と時刻欄を閉じます。入力を減らすためです。
 function applyTemplateShape() {
 	const shape = $("#templateShape").value;
+	// 車庫から駅への区間は回送です。客を乗せる便にはしません。
+	if (shape === "garage") {
+		$("#templateOutboundType").value = "deadhead";
+		$("#templateInboundType").value = "none";
+	}
 	if (shape === "outbound") $("#templateInboundType").value = "none";
 	if (shape === "inbound") $("#templateOutboundType").value = "none";
 	if (shape === "round") {
