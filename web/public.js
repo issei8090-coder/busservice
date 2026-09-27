@@ -12,6 +12,8 @@ const state = {
   stops: { inbound: "", outbound: "" },
   stopTouched: { inbound: false, outbound: false },
   wish: { inbound: "", outbound: "" },
+  // 帰りは「学校を出る時刻」と「駅に着く時刻」のどちらからでも選べます。
+  wishBasis: "departure",
   program: "",
   stage: "",
   table: { direction: "inbound", stop: "" },
@@ -209,7 +211,7 @@ function chooseJourney(direction, all, wish) {
   if (limit === null) {
     return { main: departable[0] || null, rest: departable.slice(1, 4) };
   }
-  if (direction === "inbound") {
+  if (wantsArrival(direction)) {
     const inTime = departable.filter((item) => clockMinutes(item.arrival) !== null && clockMinutes(item.arrival) <= limit);
     if (inTime.length) {
       const main = inTime[inTime.length - 1];
@@ -356,6 +358,39 @@ function timeRow(direction) {
   return row;
 }
 
+// 希望時刻は案内の入口です。下に出る便の大きな時刻へ先に目が行かないよう、
+// 見出しを大きくして面で囲みます。
+function wishField(direction) {
+  const box = element("div", "field wish-field");
+  const arrival = wantsArrival(direction);
+  const stopName = state.stops[direction];
+  box.append(element("h3", null, direction === "inbound"
+    ? "何時ごろ学校に着きたいですか"
+    : arrival ? `何時ごろ${stopName || "駅"}に着きたいですか` : "何時ごろ学校を出発したいですか"));
+  if (direction === "outbound") {
+    // 電車の時刻に合わせる方は、駅に着く時刻で選びたいはずです。
+    const switcher = element("div", "wish-basis", "");
+    [["departure", "学校を出る時刻"], ["arrival", `${stopName || "駅"}に着く時刻`]].forEach(([value, label]) => {
+      const button = element("button", null, label);
+      button.type = "button";
+      button.dataset.wishBasis = value;
+      button.setAttribute("aria-pressed", String(state.wishBasis === value));
+      switcher.append(button);
+    });
+    box.append(switcher);
+  }
+  box.append(element("p", "wish-lead", arrival
+    ? "時刻を入れると、その時刻までに着く便をお選びします。"
+    : "時刻を入れると、その時刻以降の便をお選びします。"));
+  box.append(timeRow(direction));
+  return box;
+}
+
+// 学校へ行く便はいつも「着きたい時刻」、帰る便は選んだはかり方で決めます。
+function wantsArrival(direction) {
+  return direction === "inbound" || state.wishBasis === "arrival";
+}
+
 function field(title, node) {
   const box = element("div", "field");
   box.append(element("h3", null, title));
@@ -411,8 +446,8 @@ function resultCard(direction, journey, options = {}) {
     const wait = options.gap >= 60
       ? `${Math.floor(options.gap / 60)}時間${options.gap % 60 ? `${options.gap % 60}分` : ""}`
       : `${options.gap}分`;
-    main.append(element("p", "result-note", direction === "inbound"
-      ? `ご希望の時刻より${wait}早く学校に着きます。この前後に便はありません。`
+    main.append(element("p", "result-note", wantsArrival(direction)
+      ? `ご希望の時刻より${wait}早く${direction === "inbound" ? "学校" : journey.stop}に着きます。この前後に便はありません。`
       : `ご希望の時刻から${wait}後の発車です。この間に便はありません。`));
   }
   if (options.afterLast) {
@@ -528,7 +563,9 @@ function resultCard(direction, journey, options = {}) {
 function followList(direction, rest, kind) {
   if (!rest.length) return null;
   const box = document.createElement("div");
-  box.append(element("p", "follow-head", kind === "earlier" ? "もっと早く学校に着く便" : "この次の便"));
+  box.append(element("p", "follow-head", kind === "earlier"
+    ? (direction === "inbound" ? "もっと早く学校に着く便" : "もっと早く着く便")
+    : "この次の便"));
   const list = element("ul", "follow");
   rest.forEach((item) => {
     const row = document.createElement("li");
@@ -562,10 +599,7 @@ function renderJourneyBody(direction, container) {
     return;
   }
 
-  container.append(field(
-    direction === "inbound" ? "何時ごろ学校に着きたいですか" : "何時ごろ学校を出発したいですか",
-    timeRow(direction),
-  ));
+  container.append(wishField(direction));
 
   const all = journeys(direction, stopName);
   if (!all.length) {
@@ -583,7 +617,7 @@ function renderJourneyBody(direction, container) {
     const wish = clockMinutes(state.wish[direction]);
     let gap = 0;
     if (wish !== null && !picked.late) {
-      gap = direction === "inbound"
+      gap = wantsArrival(direction)
         ? wish - clockMinutes(picked.main.arrival)
         : clockMinutes(picked.main.departure) - wish;
     }
@@ -1317,6 +1351,12 @@ document.addEventListener("click", (event) => {
       item.id === state.program && (!state.stage || item.stage === state.stage));
     if (!stillShown) state.program = "";
     writeQuery();
+    renderBodies();
+    return;
+  }
+  const wishBasis = event.target.closest("button[data-wish-basis]");
+  if (wishBasis) {
+    state.wishBasis = wishBasis.dataset.wishBasis;
     renderBodies();
     return;
   }
