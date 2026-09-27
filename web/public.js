@@ -528,7 +528,7 @@ function resultCard(direction, journey, options = {}) {
     const place = element("div", "result-place");
     place.append(element("strong", null, `乗り場　${stop.place || `${stop.name}駅`}`));
     if (stop.landmark) place.append(element("p", null, stop.landmark));
-    if (stop.walkMinutes) place.append(element("p", "walk", `改札からおよそ徒歩${stop.walkMinutes}分です。発車の5分前までにお越しください。`));
+    if (stop.walkMinutes) place.append(element("p", "walk", `改札からおよそ徒歩${stop.walkMinutes}分です。`));
     // 地図は便の右の「乗り場の地図」から開きます。同じ行き先を二度置きません。
     card.append(place);
   }
