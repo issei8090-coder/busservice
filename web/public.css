@@ -325,7 +325,9 @@ p{margin:0}
   grid-column:1;position:relative;z-index:2;
   /* 縦書き。4字が画面に収まる高さを上限にします。 */
   writing-mode:vertical-rl;text-orientation:upright;
-  margin:clamp(18px,4svh,34px) 0 0 -.06em;
+  /* 城北埼玉のすぐ下から始めます。下端に寄せると題字と離れて見えるためです。 */
+  align-self:start;
+  margin:clamp(24px,5svh,44px) 0 0 -.06em;
   font-size:min(clamp(76px,25vw,150px),calc((100svh - 210px)/var(--chars,4)));
   font-weight:900;line-height:1.02;letter-spacing:.02em;
   font-feature-settings:normal;
@@ -1014,4 +1016,22 @@ p{margin:0}
 @media (prefers-reduced-motion:no-preference){
   .rise{opacity:0;transform:translate3d(0,22px,0)}
   .rise.is-in{opacity:1;transform:none;transition:opacity .6s ease-out,transform .7s cubic-bezier(.16,1,.3,1)}
+}
+
+/* 希望時刻を入れないときの案内。入れ忘れではないと分かるよう、はっきり出します。 */
+.wish-note{
+  flex:1 1 200px;min-width:0;
+  display:flex;align-items:center;gap:8px;
+  margin:0;padding:10px 12px;
+  border-radius:var(--radius-sm);
+  background:rgba(241,189,84,.18);
+  box-shadow:inset 0 0 0 1px rgba(138,90,0,.28);
+  color:var(--ink);font-size:15px;font-weight:800;line-height:1.6;
+}
+.wish-note::before{
+  content:"i";flex:none;
+  width:20px;height:20px;border-radius:999px;
+  background:var(--gold-deep);color:#fff;
+  font-size:13px;font-weight:900;font-style:italic;
+  display:flex;align-items:center;justify-content:center;
 }

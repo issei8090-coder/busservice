@@ -71,13 +71,27 @@
        空の色が白へ戻るのを待つと、丈のかげんで濃い文字が濃紺に乗ることがあるためです。 -->
   <div class="guide">
     <div class="daybar" id="dayBar" role="group" aria-label="来場日"></div>
-    <div class="linebar" id="lineBar" hidden></div>
     <div class="notices" id="notices" hidden></div>
 
   <main class="wrap">
     <h2 class="lead" id="choicesHeading">どちらをお調べですか</h2>
 
     <div class="choices" id="choices">
+      <section class="choice" data-mode="event">
+        <button type="button" class="choice-head" aria-expanded="false" aria-controls="bodyEvent">
+          <span class="choice-face">
+            <span class="choice-text">
+              <strong>催しに合わせて調べる</strong>
+              <small>催しの時間に合わせて便をお選びします</small>
+            </span>
+            <span class="choice-meta">
+              <span class="count" data-count="programs"></span>
+              <span class="choice-mark" aria-hidden="true"></span>
+            </span>
+        </button>
+        <div class="choice-body" id="bodyEvent" hidden></div>
+      </section>
+
       <section class="choice" data-mode="inbound">
         <button type="button" class="choice-head" aria-expanded="false" aria-controls="bodyInbound">
           <span class="choice-face">
@@ -138,21 +152,9 @@
         <div class="choice-body" id="bodyStops" hidden></div>
       </section>
 
-      <section class="choice" data-mode="event">
-        <button type="button" class="choice-head" aria-expanded="false" aria-controls="bodyEvent">
-          <span class="choice-face">
-            <span class="choice-text">
-              <strong>催しに合わせて調べる</strong>
-              <small>催しの時間に合わせて便をお選びします</small>
-            </span>
-            <span class="choice-meta">
-              <span class="count" data-count="programs"></span>
-              <span class="choice-mark" aria-hidden="true"></span>
-            </span>
-        </button>
-        <div class="choice-body" id="bodyEvent" hidden></div>
-      </section>
     </div>
+
+    <div class="linebar" id="lineBar" hidden></div>
 
     <p class="foot" id="updatedLabel"></p>
     <p class="foot-staff"><a href="/staff">職員用の画面</a></p>

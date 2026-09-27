@@ -351,7 +351,7 @@ function timeRow(direction) {
     clear.dataset.clearWish = direction;
     row.append(clear);
   } else {
-    row.append(element("span", "result-note", viewingToday() ? "指定しない場合は、今から乗れる便をご案内します" : "指定しない場合は、始発からご案内します"));
+    row.append(element("span", "wish-note", viewingToday() ? "指定しない場合は、今から乗れる便をご案内します" : "指定しない場合は、始発からご案内します"));
   }
   return row;
 }
