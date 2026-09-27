@@ -486,6 +486,12 @@ function resultCard(direction, journey, options = {}) {
         `${clockText(journey.arrival)}に${stop.name}駅着　時刻表を開きます`);
     }
     if (links.childElementCount) main.append(links);
+    // 行きの乗換案内は、アプリを入れていると現在時刻で開き直されます。
+    // こちらからは止められないので、入れ直す時刻を先に伝えておきます。
+    if (direction === "inbound" && trainToStopURL(stop, journey.departure)) {
+      main.append(element("p", "result-note",
+        `乗換案内のアプリが開いたときは、到着時刻を${clockText(journey.departure)}にしてお調べください。`));
+    }
   }
 
   card.append(main);
