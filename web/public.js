@@ -132,20 +132,14 @@ function trainToStopURL(stop, departure) {
 }
 
 // 帰りの便。その乗り場に着いたあと、そこから乗れる電車を調べます。
-// バスを降りてから改札へ入るぶんを足して、出発時刻で引きます。行きの裏返しです。
-function trainFromStopURL(stop, arrival) {
+// 乗換案内の検索ページは、行き先が無いと入口へ回されます。その入口は
+// Yahoo!乗換案内アプリが持っていく住所なので、アプリを入れている人は
+// 現在時刻で開き直されてしまいます。駅の時刻表のページはアプリが持って
+// いかないため、こちらへ渡します。何時台を見ればよいかは、リンクの脇に
+// バスの到着時刻を書いて伝えます。
+function trainFromStopURL(stop) {
   if (!stop) return "";
-  const minutes = clockMinutes(arrival);
-  if (!Number.isFinite(minutes)) return "";
-  // 日をまたぐ組み方はしません。遅い便でもその日のうちで引きます。
-  const from = Math.min(23 * 60 + 59, minutes + (stop.walkMinutes || 0));
-  const parts = String(state.date || "").split("-");
-  const when = parts.length === 3
-    ? `&y=${parts[0]}&m=${parts[1]}&d=${parts[2]}`
-    : "";
-  // type=1 は「出発時刻で検索」です。
-  return `https://transit.yahoo.co.jp/search/result?from=${encodeURIComponent(`${stop.name}駅`)}`
-    + `${when}&hh=${String(Math.floor(from / 60)).padStart(2, "0")}&m1=${Math.floor((from % 60) / 10)}&m2=${(from % 60) % 10}&type=1`;
+  return `https://transit.yahoo.co.jp/timetable/search?q=${encodeURIComponent(stop.name)}`;
 }
 
 function mapButton(stop) {
@@ -488,8 +482,8 @@ function resultCard(direction, journey, options = {}) {
         `${clockText(journey.departure)}までに${stop.name}駅へ`);
     } else {
       addLine();
-      add(trainFromStopURL(stop, journey.arrival), "train", "この便から乗れる電車",
-        `${clockText(journey.arrival)}に${stop.name}駅着`);
+      add(trainFromStopURL(stop), "train", "この便から乗れる電車",
+        `${clockText(journey.arrival)}に${stop.name}駅着　時刻表を開きます`);
     }
     if (links.childElementCount) main.append(links);
   }
