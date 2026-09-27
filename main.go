@@ -1741,6 +1741,27 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	_ = json.NewEncoder(w).Encode(value)
 }
 
+// writeJSONCached は中身からETagを作り、前と同じなら本文を送りません。
+// 一般用の画面は開いているあいだ取り直すので、ここが通信量のほとんどを占めます。
+func writeJSONCached(w http.ResponseWriter, r *http.Request, value any) {
+	body, err := json.Marshal(value)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": "内容を組み立てられません"})
+		return
+	}
+	sum := sha256.Sum256(body)
+	tag := "\"" + hex.EncodeToString(sum[:8]) + "\""
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("ETag", tag)
+	w.Header().Set("Cache-Control", "no-cache")
+	if r.Header.Get("If-None-Match") == tag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	w.WriteHeader(200)
+	_, _ = w.Write(body)
+}
+
 func writeStoreError(w http.ResponseWriter, err error) bool {
 	var conflict *ConflictError
 	if errors.As(err, &conflict) {

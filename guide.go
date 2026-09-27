@@ -574,6 +574,19 @@ func (s *Store) saveAttribution(items []string) {
 			cleaned = append(cleaned, item)
 		}
 	}
+	// 出典は滅多に変わりません。同じなら保存もしません。
+	if len(cleaned) == len(s.state.LineAttribution) {
+		same := true
+		for index := range cleaned {
+			if cleaned[index] != s.state.LineAttribution[index] {
+				same = false
+				break
+			}
+		}
+		if same {
+			return
+		}
+	}
 	s.state.LineAttribution = cleaned
 	_ = s.saveLocked()
 }
@@ -593,6 +606,10 @@ func (s *Store) listLineStatuses() []LineStatus {
 func (s *Store) saveLineStatuses(input []LineStatus, source string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	previous := make(map[string]LineStatus, len(s.state.LineStatuses))
+	for _, item := range s.state.LineStatuses {
+		previous[item.Railway+"|"+item.Name] = item
+	}
 	cleaned := make([]LineStatus, 0, len(input))
 	now := time.Now().In(jst).Format(time.RFC3339)
 	for _, item := range input {
@@ -606,11 +623,33 @@ func (s *Store) saveLineStatuses(input []LineStatus, source string) error {
 			item.Status = "unknown"
 		}
 		item.Source = source
-		item.UpdatedAt = now
+		// 平常のままなら時刻も据え置きます。5分ごとに時刻だけ書き換えると、
+		// 何も起きていないのに保存が走り、来場者の画面も取り直しになります。
+		if before, ok := previous[item.Railway+"|"+item.Name]; ok && before.Status == item.Status && before.Text == item.Text && before.Source == item.Source {
+			item.UpdatedAt = before.UpdatedAt
+		} else {
+			item.UpdatedAt = now
+		}
 		cleaned = append(cleaned, item)
+	}
+	if sameLineStatuses(s.state.LineStatuses, cleaned) {
+		return nil
 	}
 	s.state.LineStatuses = cleaned
 	return s.saveLocked()
+}
+
+// sameLineStatuses は保存が要るかどうかを見ます。並びも内容も同じなら要りません。
+func sameLineStatuses(before, after []LineStatus) bool {
+	if len(before) != len(after) {
+		return false
+	}
+	for index := range before {
+		if before[index] != after[index] {
+			return false
+		}
+	}
+	return true
 }
 
 // guideRailways は画面に出す路線です。traininfo-apiの路線IDと、来場者向けの表示名を対応させます。
@@ -1043,7 +1082,10 @@ func (a *App) publicGuide(w http.ResponseWriter, r *http.Request) {
 			date = candidate
 		}
 	}
-	writeJSON(w, 200, map[string]any{
+	// 来場者の画面は開いているあいだ取り直します。中身が変わっていなければ
+	// 本文を送らずに304で済ませたいので、応答に取得時刻は入れません。
+	// 「何時現在」は受け取った側が自分の時計で出します。
+	writeJSONCached(w, r, map[string]any{
 		"day":         day,
 		"date":        date,
 		"trips":       a.store.publicTrips(date, day),
@@ -1057,7 +1099,6 @@ func (a *App) publicGuide(w http.ResponseWriter, r *http.Request) {
 		"attribution": a.store.listAttribution(),
 		"settings":    a.store.publicEventSettings(),
 		"chairWords":  a.store.publicChairWords(),
-		"updatedAt":   time.Now().In(jst).Format(time.RFC3339),
 	})
 }
 

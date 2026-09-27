@@ -19,6 +19,9 @@ const state = {
   table: { direction: "inbound", stop: "" },
   loading: true,
   error: "",
+  // 「何時現在」の表示に使います。応答に時刻を入れると、中身が同じでも
+  // 毎回別物になってしまい、取り直しを軽く済ませられません。
+  fetchedAt: "",
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -1122,8 +1125,8 @@ function renderHeader() {
 
   const foot = $("#updatedLabel");
   foot.replaceChildren();
-  if (state.data?.updatedAt) {
-    foot.append(element("span", null, `${tokyo({ hour: "2-digit", minute: "2-digit" }).format(new Date(state.data.updatedAt))} 現在の情報です`));
+  if (state.fetchedAt) {
+    foot.append(element("span", null, `${tokyo({ hour: "2-digit", minute: "2-digit" }).format(new Date(state.fetchedAt))} 現在の情報です`));
   }
   (state.data?.attribution || []).forEach((line) => {
     foot.append(element("small", "credit", line));
@@ -1203,6 +1206,7 @@ async function load(options = {}) {
     const response = await fetch(`/api/public/guide?${params.toString()}`, { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error("時刻を読み込めませんでした");
     state.data = await response.json();
+    state.fetchedAt = new Date().toISOString();
     state.days = buildDays(state.data.settings || {});
     // サーバーは日付を省くと、その曜日の開催日で組み立てて返します。返ってきた
     // 日付をそのまま採り、取り直しは本当に別の日を見るときだけにします。
@@ -1396,13 +1400,8 @@ setInterval(() => {
   if (!document.hidden && viewingToday()) render();
 }, 30000);
 
-setInterval(() => {
-  if (!document.hidden && viewingToday()) load();
-}, 120000);
-
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && viewingToday()) load();
-});
+// 取り直しは5分おきの1本だけにします（この下の「定期の読み直し」）。
+// 2分おきの取得と、画面へ戻ったときの取得が二重になっていました。
 
 readQuery();
 render();
