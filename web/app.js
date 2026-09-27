@@ -21,6 +21,8 @@ const state = {
   driveOpen: false,
   driveTimer: null,
   fleetTimer: null,
+  // 学校⓪と車庫の入力を書き換えた印です。15秒ごとの再読込で上書きしないために持ちます。
+  schoolPointDirty: false,
   wakeLock: null,
   wakeWanted: false,
   lastFocused: null,
@@ -1370,7 +1372,9 @@ function renderFleet() {
 		return "<article class=\"" + (!item.position ? "no-position" : item.ageSeconds > 60 ? "stale-position" : item.ageSeconds > 30 ? "delayed-position" : "") + "\"><strong>運用 " + item.operationNo + "</strong><span>" + escapeHTML(item.run?.vehicleNo || "車両未定") + "　" + escapeHTML(item.run?.driverName || "担当未定") + "</span><small>" + location + "</small></article>";
   }).join("");
   $("#fleetMapStatus").textContent = vehicles.filter((item) => item.position).length + "台の最新位置を表示";
-  if (!$("#schoolPointForm").contains(document.activeElement)) {
+  // 入力中と、地図から選んだあとは上書きしません。端末によっては地図を押しても
+  // フォーカスが移らないので、フォーカスだけを頼りにすると選んだ座標が消えます。
+  if (!state.schoolPointDirty && !$("#schoolPointForm").contains(document.activeElement)) {
     $("#schoolLatitude").value = state.settings.schoolLatitude || "";
     $("#schoolLongitude").value = state.settings.schoolLongitude || "";
     $("#schoolRadius").value = state.settings.schoolRadius || 35;
@@ -1384,6 +1388,13 @@ function renderFleet() {
 
 async function saveSchoolPoint(event) {
   event.preventDefault();
+  // 空のままだと既定の検証が静かに止めるだけで理由が出ないので、自分で確かめて伝えます。
+  for (const id of ["#schoolLatitude", "#schoolLongitude"]) {
+    if (Number.isFinite(Number($(id).value)) && $(id).value !== "") continue;
+    toast("学校の緯度と経度を入れてください。地図から選ぶと入ります", "error");
+    $(id).focus();
+    return;
+  }
   const payload = {
     schoolLatitude: Number($("#schoolLatitude").value), schoolLongitude: Number($("#schoolLongitude").value),
     schoolRadius: Number($("#schoolRadius").value || 35),
@@ -1392,6 +1403,7 @@ async function saveSchoolPoint(event) {
   setBusy(true);
   try {
     state.settings = await api("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    state.schoolPointDirty = false;
     renderFleet();
     toast("学校地点⓪と車庫を保存しました");
   } catch (error) { toast(error.message, "error"); }
@@ -1412,6 +1424,7 @@ const pointPickers = {};
 
 function writePoint(kind, point) {
   const field = pointFields[kind];
+  state.schoolPointDirty = true;
   $(field.latitude).value = Number(point.latitude).toFixed(7);
   $(field.longitude).value = Number(point.longitude).toFixed(7);
   pointPickers[kind]?.setPoint(point);
@@ -1852,6 +1865,7 @@ $("#templateInboundType").addEventListener("change", () => toggleTemplateLeg("in
 ["#templateDeparture", "#templateArrival", "#templateOutboundDeparture", "#templateInboundArrival"].forEach((id) => $(id).addEventListener("change", () => mirrorTemplateClock(id)));
 $("#newTemplateButton").addEventListener("click", () => editTemplate(null));
 $("#schoolPointForm").addEventListener("submit", saveSchoolPoint);
+$("#schoolPointForm").addEventListener("input", () => { state.schoolPointDirty = true; });
 $("#captureSchoolPoint").addEventListener("click", () => capturePoint("school"));
 $("#captureGaragePoint").addEventListener("click", () => capturePoint("garage"));
 $("#schoolPointForm").addEventListener("click", (event) => {
