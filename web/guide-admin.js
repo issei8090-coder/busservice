@@ -91,7 +91,7 @@ function stopCard(stop) {
   const title = document.createElement("strong");
   title.textContent = stop.name || "新しい乗り場";
   const line = document.createElement("small");
-  line.textContent = stop.line || "";
+  line.textContent = (stop.line || "") + (stop.alightOnly ? "　降車専用" : "");
   const spacer = document.createElement("span");
   spacer.className = "spacer";
   head.append(title, line, spacer);
@@ -135,6 +135,19 @@ function stopCard(stop) {
   landmarkInput.placeholder = "改札を出て左、交番の向かいです";
   landmark.append(landmarkLabel, landmarkInput);
   grid.append(landmark);
+
+  // 降ろす場所が通常の乗り場と違う便のための地点です。そこからは乗れないので、
+  // 場所は残しつつ来場者の画面には出しません。
+  const alight = document.createElement("label");
+  alight.className = "full stop-alight";
+  const alightInput = document.createElement("input");
+  alightInput.type = "checkbox";
+  alightInput.dataset.field = "alightOnly";
+  alightInput.checked = Boolean(stop.alightOnly);
+  const alightLabel = document.createElement("span");
+  alightLabel.textContent = "降車専用（来場者の画面には出しません）";
+  alight.append(alightInput, alightLabel);
+  grid.append(alight);
   body.append(grid);
 
   // 緯度と経度は数字で打つと間違えやすいので、地図を押して入れられるようにします。
@@ -294,7 +307,8 @@ function collectStop(card) {
   const stop = { id: card.dataset.id || "" };
   card.querySelectorAll("input[data-field]").forEach((input) => {
     const key = input.dataset.field;
-    if (input.type === "number") stop[key] = input.value === "" ? 0 : Number(input.value);
+    if (input.type === "checkbox") stop[key] = input.checked;
+    else if (input.type === "number") stop[key] = input.value === "" ? 0 : Number(input.value);
     else stop[key] = input.value.trim();
   });
   const existing = state.stops.find((item) => item.id === stop.id);

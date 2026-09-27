@@ -19,6 +19,9 @@
 .stop-grid label{display:grid;gap:4px}
 .stop-grid .full{grid-column:1/-1}
 .stop-grid input{min-height:44px;padding:0 12px;border:1px solid var(--stroke-strong);border-radius:var(--radius-small)}
+/* 降車専用の印。入力欄ではないので、横並びにして指で押せる大きさにします。 */
+.stop-grid .stop-alight{display:flex;align-items:center;gap:10px;min-height:44px}
+.stop-grid .stop-alight input{width:22px;min-height:22px;padding:0;flex:none}
 .stop-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .stop-actions .spacer{flex:1}
 .map-hint{color:var(--ink-soft);font-size:13px}

@@ -36,6 +36,10 @@ type Stop struct {
 	Latitude    float64 `json:"latitude"`
 	Longitude   float64 `json:"longitude"`
 	Order       int     `json:"order"`
+	// 降車専用の地点です。学校発南古谷経由本川越便のように、降ろす場所が
+	// 通常の乗り場と違う便があります。そこからは乗れないので、場所は記録
+	// しつつ、来場者の画面には出しません。
+	AlightOnly bool `json:"alightOnly"`
 }
 
 // Leg は区間の所要時間です。向きは問いません。
@@ -255,6 +259,19 @@ func stopTimes(route, schoolDeparture, schoolArrival string, legs []Leg, outboun
 }
 
 // ---------- 乗り場 ----------
+
+// publicStops は来場者へ見せる乗り場です。降車専用の地点は外します。
+func (s *Store) publicStops() []Stop {
+	stops := s.listStops()
+	open := make([]Stop, 0, len(stops))
+	for _, stop := range stops {
+		if stop.AlightOnly {
+			continue
+		}
+		open = append(open, stop)
+	}
+	return open
+}
 
 func (s *Store) listStops() []Stop {
 	s.mu.RLock()
@@ -1054,7 +1071,7 @@ func (s *Store) afterParty(day string) map[string]any {
 		return nil
 	}
 	stops := make([]string, 0, 4)
-	for _, stop := range s.listStops() {
+	for _, stop := range s.publicStops() {
 		stops = append(stops, stop.Name)
 	}
 	return map[string]any{"note": "後夜祭（花火）終了後、順次発車します", "stops": stops}
@@ -1089,7 +1106,7 @@ func (a *App) publicGuide(w http.ResponseWriter, r *http.Request) {
 		"day":         day,
 		"date":        date,
 		"trips":       a.store.publicTrips(date, day),
-		"stops":       a.store.listStops(),
+		"stops":       a.store.publicStops(),
 		"legs":        a.store.listLegs(),
 		"afterParty":  a.store.afterParty(day),
 		"notices":     a.store.listNotices(day),
