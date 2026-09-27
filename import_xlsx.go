@@ -211,12 +211,14 @@ func (t columnTrip) outboundType() string {
 }
 
 // inboundType は復路の便種別です。15行目の印で決めます。
+// 15行目の回送は、学校から駅へ客を乗せて出たあと、空で学校へ戻る便を指します。
+// 往路が回送の便と、学校発が無い便（車庫から駅へ迎えに行く便）の復路は客を乗せます。
 func (t columnTrip) inboundType() string {
-	switch {
-	case strings.Contains(t.ReturnMark, "回送"):
-		return "deadhead"
-	case strings.Contains(t.ReturnMark, "団体専用"):
+	if strings.Contains(t.ReturnMark, "団体専用") {
 		return "group"
+	}
+	if strings.Contains(t.ReturnMark, "回送") && t.SchoolDeparture.Clock != "" && t.outboundType() == "passenger" {
+		return "deadhead"
 	}
 	return "passenger"
 }
