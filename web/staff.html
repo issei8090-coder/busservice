@@ -152,6 +152,8 @@
                   <label><span>便番号</span><input id="templateColumn" type="number" min="1" max="99" required></label>
                   <label><span>一周の出発</span><input id="templateDeparture" type="time"></label>
                   <label><span>一周の帰着</span><input id="templateArrival" type="time"></label>
+                  <label><span>路線</span><select id="templateLine"><option value="">路線を選ぶ</option><option value="ふじみ野線">ふじみ野線</option><option value="南古谷線">南古谷線</option><option value="南古谷経由本川越線">南古谷経由本川越線</option><option value="本川越発南古谷経由線">本川越発南古谷経由線</option><option value="本川越線">本川越線</option></select></label>
+                  <label><span>向き</span><select id="templateShape"><option value="round">学校を出て学校へ帰る</option><option value="outbound">学校から駅まで（片道）</option><option value="inbound">駅から学校まで（片道）</option></select></label>
                   <label class="full"><span>全体経路</span><input id="templateRoute" maxlength="200" placeholder="学校 → ふじみ野 → 学校" required></label>
                 </div>
                 <div class="leg-edit-grid">
@@ -192,7 +194,7 @@
                 <input id="routeProfileId" type="hidden">
                 <div class="route-form-grid">
                   <label class="route-name-field"><span>経路名</span><input id="routeName" maxlength="80" placeholder="例 本川越 復路 夕方 2号車" required></label>
-                  <label><span>路線</span><select id="routeLine" required><option value="ふじみ野">ふじみ野線</option><option value="南古谷">南古谷線</option><option value="本川越">本川越線</option></select></label>
+                  <label><span>路線</span><select id="routeLine" required><option value="ふじみ野線">ふじみ野線</option><option value="南古谷線">南古谷線</option><option value="南古谷経由本川越線">南古谷経由本川越線</option><option value="本川越発南古谷経由線">本川越発南古谷経由線</option><option value="本川越線">本川越線</option></select></label>
                   <label><span>方向</span><select id="routeDirection" required><option value="outbound">往路 学校発</option><option value="inbound">復路 学校着</option></select></label>
                   <label><span>開始時刻</span><input id="routeTimeFrom" type="time"></label>
                   <label><span>終了時刻</span><input id="routeTimeTo" type="time"></label>

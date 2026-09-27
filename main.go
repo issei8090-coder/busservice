@@ -38,9 +38,11 @@ var webFiles embed.FS
 var jst = time.FixedZone("JST", 9*60*60)
 
 type Template struct {
-	Day               string `json:"day"`
-	OperationNo       int    `json:"operationNo"`
-	ColumnNo          int    `json:"columnNo"`
+	Day         string `json:"day"`
+	OperationNo int    `json:"operationNo"`
+	ColumnNo    int    `json:"columnNo"`
+	// Line は5路線のどれかです。空のときは経路の文字列から判定します。
+	Line              string `json:"line"`
 	PlannedDeparture  string `json:"plannedDeparture"`
 	PlannedArrival    string `json:"plannedArrival"`
 	Route             string `json:"route"`
@@ -59,6 +61,7 @@ type Run struct {
 	Day                     string  `json:"day"`
 	OperationNo             int     `json:"operationNo"`
 	ColumnNo                int     `json:"columnNo"`
+	Line                    string  `json:"line"`
 	PlannedDeparture        string  `json:"plannedDeparture"`
 	PlannedArrival          string  `json:"plannedArrival"`
 	Route                   string  `json:"route"`
@@ -206,6 +209,13 @@ func NewStore(filePath string) (*Store, error) {
 	if s.state.Settings.SchoolRadius <= 0 {
 		s.state.Settings.SchoolRadius = 35
 	}
+	// 駅名だけで登録していた古い路線名を、いまの5路線の名前へ直します。
+	for _, profile := range s.state.RouteProfiles {
+		profile.Line = migrateLineName(profile.Line)
+	}
+	for index := range s.state.Timetable {
+		s.state.Timetable[index].Line = templateLine(s.state.Timetable[index])
+	}
 	for index := range s.state.Timetable {
 		normalizeTemplate(&s.state.Timetable[index])
 	}
@@ -222,7 +232,69 @@ func validServiceType(value string) bool {
 	return value == "passenger" || value == "deadhead" || value == "group" || value == "none"
 }
 
+// ---------- 路線 ----------
+
+// 路線は5本です。Excelの表、元ダイヤ、経路の登録で同じ名前を使います。
+const (
+	lineFujimino        = "ふじみ野線"
+	lineMinamikoya      = "南古谷線"
+	lineHonkawagoeViaMK = "南古谷経由本川越線"
+	lineHonkawagoeToMK  = "本川越発南古谷経由線"
+	lineHonkawagoe      = "本川越線"
+)
+
+var busLines = []string{lineFujimino, lineMinamikoya, lineHonkawagoeViaMK, lineHonkawagoeToMK, lineHonkawagoe}
+
+func validLine(name string) bool {
+	for _, line := range busLines {
+		if line == name {
+			return true
+		}
+	}
+	return false
+}
+
+// migrateLineName は駅名だけで登録していた古い路線名を、いまの路線名へ直します。
+func migrateLineName(name string) string {
+	switch strings.TrimSpace(name) {
+	case "ふじみ野":
+		return lineFujimino
+	case "南古谷":
+		return lineMinamikoya
+	case "本川越":
+		return lineHonkawagoe
+	}
+	return strings.TrimSpace(name)
+}
+
+// lineFromRoute は経路の文字列から路線を判定します。手入力した便のための備えです。
+func lineFromRoute(route string) string {
+	stops := routeStops(route)
+	switch {
+	case len(stops) == 1 && stops[0] == "ふじみ野":
+		return lineFujimino
+	case len(stops) == 1 && stops[0] == "南古谷":
+		return lineMinamikoya
+	case len(stops) == 1 && stops[0] == "本川越":
+		return lineHonkawagoe
+	case len(stops) == 2 && stops[0] == "南古谷" && stops[1] == "本川越":
+		return lineHonkawagoeViaMK
+	case len(stops) == 2 && stops[0] == "本川越" && stops[1] == "南古谷":
+		return lineHonkawagoeToMK
+	}
+	return ""
+}
+
+// templateLine は元ダイヤの路線です。登録が無ければ経路から判定します。
+func templateLine(t Template) string {
+	if line := migrateLineName(t.Line); validLine(line) {
+		return line
+	}
+	return lineFromRoute(t.Route)
+}
+
 func normalizeTemplate(t *Template) {
+	t.Line = templateLine(*t)
 	if !validServiceType(t.OutboundType) {
 		t.OutboundType = "passenger"
 	}
@@ -344,7 +416,7 @@ func (s *Store) dashboard(date, day string) ([]Run, []Event, error) {
 		}
 		s.state.Runs[id] = &Run{
 			ID: id, ServiceDate: date, Day: day, OperationNo: t.OperationNo,
-			ColumnNo: t.ColumnNo, PlannedDeparture: t.PlannedDeparture,
+			ColumnNo: t.ColumnNo, Line: templateLine(t), PlannedDeparture: t.PlannedDeparture,
 			PlannedArrival: t.PlannedArrival, Route: t.Route, Status: "waiting",
 			OutboundType: t.OutboundType, InboundType: t.InboundType,
 			OutboundStatus: "waiting", InboundStatus: "waiting",
@@ -913,6 +985,11 @@ func (s *Store) saveTemplate(input Template) (*Template, error) {
 		if existing.Day != input.Day || existing.OperationNo != input.OperationNo || existing.ColumnNo == input.ColumnNo {
 			continue
 		}
+		// 同じ路線の便は、経由の駅ごとに分けた同じ一回りです。
+		// 出発が同じでも、時間が重なっていても正しいので、重複とはみなしません。
+		if templateLine(existing) != "" && templateLine(existing) == templateLine(input) {
+			continue
+		}
 		if existing.PlannedDeparture == input.PlannedDeparture {
 			return nil, errors.New("同じ運用に同一出発時刻の便があります")
 		}
@@ -939,6 +1016,7 @@ func (s *Store) saveTemplate(input Template) (*Template, error) {
 			continue
 		}
 		run.PlannedDeparture, run.PlannedArrival, run.Route = input.PlannedDeparture, input.PlannedArrival, input.Route
+		run.Line = templateLine(input)
 		run.OutboundType, run.InboundType = input.OutboundType, input.InboundType
 		run.OutboundDeparture, run.OutboundArrival = input.OutboundDeparture, input.OutboundArrival
 		run.InboundDeparture, run.InboundArrival, run.ServiceDetails = input.InboundDeparture, input.InboundArrival, input.Details
@@ -1070,15 +1148,23 @@ func parseWorkbook(filePath string) ([]Template, error) {
 	for _, rel := range rels.Items {
 		relMap[rel.ID] = rel.Target
 	}
+	// 共有文字列表は、文字の枠（type が s）を元へ戻すために使います。
+	sharedData, _ := zipRead(z, "xl/sharedStrings.xml")
+	shared := sharedStrings(sharedData)
 	templates := make([]Template, 0)
 	for _, sheet := range wb.Sheets {
-		parts := strings.Split(sheet.Name, "_")
-		if len(parts) != 2 || !strings.HasPrefix(parts[0], "運用") || (parts[1] != "土曜" && parts[1] != "日曜") {
-			continue
-		}
-		operation, err := strconv.Atoi(strings.TrimPrefix(parts[0], "運用"))
-		if err != nil || operation < 1 || operation > 9 {
-			continue
+		// 新しい形式は「土曜 1」、古い形式は「運用1_土曜」です。どちらも読めます。
+		day, operation, newFormat := newSheetTitle(sheet.Name)
+		if !newFormat {
+			parts := strings.Split(sheet.Name, "_")
+			if len(parts) != 2 || !strings.HasPrefix(parts[0], "運用") || (parts[1] != "土曜" && parts[1] != "日曜") {
+				continue
+			}
+			number, err := strconv.Atoi(strings.TrimPrefix(parts[0], "運用"))
+			if err != nil || number < 1 || number > 9 {
+				continue
+			}
+			day, operation = parts[1], number
 		}
 		target := relMap[sheet.RID]
 		if target == "" {
@@ -1091,32 +1177,13 @@ func parseWorkbook(filePath string) ([]Template, error) {
 		if err != nil {
 			return nil, err
 		}
-		var ws worksheetXML
-		if err := xml.Unmarshal(sheetData, &ws); err != nil {
+		rows, err := sheetRows(sheetData, shared, 20)
+		if err != nil {
 			return nil, err
 		}
-		rows := make([][]string, 20)
-		for i := range rows {
-			rows[i] = make([]string, 1)
-		}
-		for _, row := range ws.Rows {
-			if row.Number < 1 || row.Number > 20 {
-				continue
-			}
-			for _, cell := range row.Cells {
-				col := columnIndex(cell.Ref)
-				if col < 0 {
-					continue
-				}
-				for len(rows[row.Number-1]) <= col {
-					rows[row.Number-1] = append(rows[row.Number-1], "")
-				}
-				value := cell.Value
-				if cell.Type == "inlineStr" {
-					value = cell.Inline.Text
-				}
-				rows[row.Number-1][col] = strings.TrimSpace(value)
-			}
+		if newFormat {
+			templates = append(templates, parseNewSheet(rows, day, operation)...)
+			continue
 		}
 		width := 1
 		for _, row := range rows {
@@ -1136,7 +1203,7 @@ func parseWorkbook(filePath string) ([]Template, error) {
 				continue
 			}
 			templates = append(templates, Template{
-				Day: parts[1], OperationNo: operation, ColumnNo: col,
+				Day: day, OperationNo: operation, ColumnNo: col,
 				PlannedDeparture: firstValue(rows, col, 5, 3, 1),
 				PlannedArrival:   firstValue(rows, col, 15, 18),
 				Route:            routeFor(rows, col),
@@ -1144,7 +1211,7 @@ func parseWorkbook(filePath string) ([]Template, error) {
 		}
 	}
 	if len(templates) == 0 {
-		return nil, errors.New("運用1から9の土曜または日曜の表が見つかりません")
+		return nil, errors.New("土曜1から日曜9、または運用1_土曜から運用9_日曜の表が見つかりません")
 	}
 	sort.Slice(templates, func(i, j int) bool {
 		if templates[i].Day != templates[j].Day {
@@ -1261,8 +1328,9 @@ func (s *Store) saveRouteProfile(input RouteProfileInput) (*RouteProfile, error)
 	if input.Name == "" {
 		return nil, errors.New("経路名を入力してください")
 	}
-	if input.Line != "ふじみ野" && input.Line != "南古谷" && input.Line != "本川越" {
-		return nil, errors.New("路線が正しくありません")
+	input.Line = migrateLineName(input.Line)
+	if !validLine(input.Line) {
+		return nil, errors.New("路線は" + strings.Join(busLines, "、") + "から選んでください")
 	}
 	if input.Direction != "outbound" && input.Direction != "inbound" {
 		return nil, errors.New("方向が正しくありません")
@@ -1385,8 +1453,9 @@ func (s *Store) autoAssignRouteProfiles(date, day string) (int, error) {
 		}
 		bestOutbound, bestOutboundScore := "", -1
 		bestInbound, bestInboundScore := "", -1
+		line := fallback(run.Line, lineFromRoute(run.Route))
 		for _, profile := range s.state.RouteProfiles {
-			if !strings.Contains(run.Route, profile.Line) {
+			if profile.Line != line {
 				continue
 			}
 			if profile.VehicleNo != "" && profile.VehicleNo != run.VehicleNo {
@@ -1707,11 +1776,55 @@ func (a *App) settings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodPatch {
-		var input AppSettings
+		// 送られてきた項目だけを今の設定へ重ねます。
+		// 全部を置き換えると、学校地点⓪を保存したときに開催日や写真が消えてしまいます。
+		var input struct {
+			SchoolLatitude  *float64  `json:"schoolLatitude"`
+			SchoolLongitude *float64  `json:"schoolLongitude"`
+			SchoolRadius    *float64  `json:"schoolRadius"`
+			EventName       *string   `json:"eventName"`
+			EventSaturday   *string   `json:"eventSaturday"`
+			EventSunday     *string   `json:"eventSunday"`
+			HeroPhoto       *string   `json:"heroPhoto"`
+			LeapPhoto       *string   `json:"leapPhoto"`
+			ChairWords      *[]string `json:"chairWords"`
+			ChairName       *string   `json:"chairName"`
+		}
 		if !decodeJSON(w, r, &input) {
 			return
 		}
-		saved, err := a.store.saveSettings(input)
+		merged := a.store.settings()
+		if input.SchoolLatitude != nil {
+			merged.SchoolLatitude = *input.SchoolLatitude
+		}
+		if input.SchoolLongitude != nil {
+			merged.SchoolLongitude = *input.SchoolLongitude
+		}
+		if input.SchoolRadius != nil {
+			merged.SchoolRadius = *input.SchoolRadius
+		}
+		if input.EventName != nil {
+			merged.EventName = *input.EventName
+		}
+		if input.EventSaturday != nil {
+			merged.EventSaturday = *input.EventSaturday
+		}
+		if input.EventSunday != nil {
+			merged.EventSunday = *input.EventSunday
+		}
+		if input.HeroPhoto != nil {
+			merged.HeroPhoto = *input.HeroPhoto
+		}
+		if input.LeapPhoto != nil {
+			merged.LeapPhoto = *input.LeapPhoto
+		}
+		if input.ChairWords != nil {
+			merged.ChairWords = *input.ChairWords
+		}
+		if input.ChairName != nil {
+			merged.ChairName = *input.ChairName
+		}
+		saved, err := a.store.saveSettings(merged)
 		if err != nil {
 			writeJSON(w, 400, map[string]string{"error": err.Error()})
 			return

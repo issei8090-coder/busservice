@@ -1144,6 +1144,51 @@ function clockValue(value) {
 	return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
 
+// 路線ごとの駅の並びです。経路の文字列はここから組み立てます。
+const lineStations = {
+	"ふじみ野線": ["ふじみ野"],
+	"南古谷線": ["南古谷"],
+	"南古谷経由本川越線": ["南古谷", "本川越"],
+	"本川越発南古谷経由線": ["本川越", "南古谷"],
+	"本川越線": ["本川越"],
+};
+
+// routeText は路線と向きから「学校 → ふじみ野 → 学校」のような経路を作ります。
+function routeText(line, shape) {
+	const stations = lineStations[line];
+	if (!stations) return "";
+	if (shape === "outbound") return ["学校", ...stations].join(" → ");
+	if (shape === "inbound") return [...stations, "学校"].join(" → ");
+	return ["学校", ...stations, "学校"].join(" → ");
+}
+
+// lineFromRoute は経路の文字列から路線を判定します。取り込んだ便には路線が入っています。
+function lineFromRoute(route) {
+	const stops = [];
+	String(route || "").split("→").forEach((part) => {
+		const name = part.trim();
+		if (name && name !== "学校" && !stops.includes(name)) stops.push(name);
+	});
+	const key = stops.join(",");
+	if (key === "ふじみ野") return "ふじみ野線";
+	if (key === "南古谷") return "南古谷線";
+	if (key === "本川越") return "本川越線";
+	if (key === "南古谷,本川越") return "南古谷経由本川越線";
+	if (key === "本川越,南古谷") return "本川越発南古谷経由線";
+	return "";
+}
+
+// shapeFromRoute は経路の文字列から、往復か片道かを見ます。
+function shapeFromRoute(route) {
+	const nodes = String(route || "").split("→").map((part) => part.trim()).filter(Boolean);
+	if (nodes.length < 2) return "round";
+	const head = nodes[0] === "学校", tail = nodes[nodes.length - 1] === "学校";
+	if (head && tail) return "round";
+	if (head) return "outbound";
+	if (tail) return "inbound";
+	return "round";
+}
+
 function validateTemplatePayload(payload) {
 	const errors = [], warnings = [];
 	const cycleStart = clockValue(payload.plannedDeparture), cycleEnd = clockValue(payload.plannedArrival);
@@ -1160,13 +1205,15 @@ function validateTemplatePayload(payload) {
 	if (payload.inboundType !== "none" && inboundStart === null) warnings.push("復路出発が未入力です");
 	if (payload.outboundType === "none" && (outboundStart !== null || outboundEnd !== null)) warnings.push("往路は運行なしですが時刻が入っています");
 	if (payload.inboundType === "none" && (inboundStart !== null || inboundEnd !== null)) warnings.push("復路は運行なしですが時刻が入っています");
-	const overlaps = state.timetable.filter((item) => item.day === payload.day && item.operationNo === payload.operationNo && item.columnNo !== payload.columnNo).filter((item) => {
+	const line = payload.line || lineFromRoute(payload.route);
+	// 同じ路線の便は、経由の駅ごとに分けた同じ一回りなので、重なっていても正しいです。
+	const overlaps = state.timetable.filter((item) => item.day === payload.day && item.operationNo === payload.operationNo && item.columnNo !== payload.columnNo).filter((item) => (item.line || lineFromRoute(item.route)) !== line).filter((item) => {
 		const start = clockValue(timeInputValue(item.plannedDeparture)), end = clockValue(timeInputValue(item.plannedArrival));
 		return cycleStart !== null && cycleEnd !== null && start !== null && end !== null && cycleStart < end && cycleEnd > start;
 	});
 	if (overlaps.length) errors.push(`便${overlaps.map((item) => item.columnNo).join("、")}と時間が重複しています`);
-	const hasRouteProfile = state.routeProfiles.some((profile) => payload.route.includes(profile.line));
-	if (!hasRouteProfile) warnings.push("該当路線の登録経路がありません");
+	if (!line) warnings.push("路線を判別できません。路線を選ぶか、経路の書き方を確かめてください");
+	else if (state.routeProfiles.length && !state.routeProfiles.some((profile) => profile.line === line)) warnings.push(`${line}の登録経路がありません`);
 	return { errors, warnings };
 }
 
@@ -1186,7 +1233,7 @@ function renderTimetableEditor() {
   $("#timetableList").innerHTML = items.length ? items.map((item) => {
     const outward = serviceTypeInfo[item.outboundType] || serviceTypeInfo.passenger;
     const inward = serviceTypeInfo[item.inboundType] || serviceTypeInfo.passenger;
-    return "<button type=\"button\" data-template-key=\"" + escapeHTML(templateKey(item)) + "\" class=\"" + (state.editingTemplateKey === templateKey(item) ? "active" : "") + "\"><strong>便 " + item.columnNo + "　" + escapeHTML(item.plannedDeparture || "未定") + "</strong><span>" + escapeHTML(item.route) + "</span><small>往 " + outward[0] + "　復 " + inward[0] + "</small></button>";
+    return "<button type=\"button\" data-template-key=\"" + escapeHTML(templateKey(item)) + "\" class=\"" + (state.editingTemplateKey === templateKey(item) ? "active" : "") + "\"><strong>便 " + item.columnNo + "　" + escapeHTML(item.plannedDeparture || "未定") + "</strong><span>" + escapeHTML(item.route) + "</span><small>" + escapeHTML(item.line || "") + (item.line ? "　" : "") + "往 " + outward[0] + "　復 " + inward[0] + "</small></button>";
   }).join("") : "<div class=\"empty\">この運用の元ダイヤはありません</div>";
 }
 
@@ -1202,6 +1249,8 @@ function editTemplate(item) {
   $("#templateDeparture").value = timeInputValue(value.plannedDeparture);
   $("#templateArrival").value = timeInputValue(value.plannedArrival);
   $("#templateRoute").value = value.route || "";
+  $("#templateLine").value = value.line || lineFromRoute(value.route) || "";
+  $("#templateShape").value = shapeFromRoute(value.route);
   $("#templateOutboundType").value = value.outboundType || "passenger";
   $("#templateInboundType").value = value.inboundType || "passenger";
   $("#templateOutboundDeparture").value = timeInputValue(value.outboundDeparture || value.plannedDeparture);
@@ -1209,7 +1258,50 @@ function editTemplate(item) {
   $("#templateInboundDeparture").value = timeInputValue(value.inboundDeparture);
   $("#templateInboundArrival").value = timeInputValue(value.inboundArrival || value.plannedArrival);
   $("#templateDetails").value = value.details || "";
+  applyTemplateShape();
   renderTimetableEditor();
+}
+
+// 向きに合わせて、使わない便種別と時刻欄を閉じます。入力を減らすためです。
+function applyTemplateShape() {
+	const shape = $("#templateShape").value;
+	if (shape === "outbound") $("#templateInboundType").value = "none";
+	if (shape === "inbound") $("#templateOutboundType").value = "none";
+	if (shape === "round") {
+		if ($("#templateOutboundType").value === "none") $("#templateOutboundType").value = "passenger";
+		if ($("#templateInboundType").value === "none") $("#templateInboundType").value = "passenger";
+	}
+	toggleTemplateLeg("outbound");
+	toggleTemplateLeg("inbound");
+}
+
+// 運行なしの方向は、時刻を空にして触れないようにします。
+function toggleTemplateLeg(leg) {
+	const outbound = leg === "outbound";
+	const off = $(outbound ? "#templateOutboundType" : "#templateInboundType").value === "none";
+	const ids = outbound ? ["#templateOutboundDeparture", "#templateOutboundArrival"] : ["#templateInboundDeparture", "#templateInboundArrival"];
+	ids.forEach((id) => {
+		const field = $(id);
+		if (off) field.value = "";
+		field.disabled = off;
+	});
+}
+
+// 一周の出発と往路出発、一周の帰着と復路到着は同じ時刻になることが多いので、
+// 片方を入れたら空いている方へ写します。6つの時刻を毎回入れずに済みます。
+const templateClockPairs = [["#templateDeparture", "#templateOutboundDeparture"], ["#templateArrival", "#templateInboundArrival"]];
+function mirrorTemplateClock(source) {
+	templateClockPairs.forEach(([cycle, leg]) => {
+		if (source === cycle && !$(leg).disabled && !$(leg).value) $(leg).value = $(cycle).value;
+		if (source === leg && !$(cycle).value) $(cycle).value = $(leg).value;
+	});
+}
+
+// 路線と向きを選ぶと、全体経路の文字を作ります。
+function applyTemplateLine() {
+	const text = routeText($("#templateLine").value, $("#templateShape").value);
+	if (text) $("#templateRoute").value = text;
+	applyTemplateShape();
 }
 
 async function saveTemplate(event) {
@@ -1217,7 +1309,7 @@ async function saveTemplate(event) {
   if (state.busy) return;
   const payload = {
     day: $("#templateDay").value, operationNo: Number($("#templateOperation").value), columnNo: Number($("#templateColumn").value),
-    plannedDeparture: $("#templateDeparture").value, plannedArrival: $("#templateArrival").value, route: $("#templateRoute").value.trim(),
+    line: $("#templateLine").value, plannedDeparture: $("#templateDeparture").value, plannedArrival: $("#templateArrival").value, route: $("#templateRoute").value.trim(),
     outboundType: $("#templateOutboundType").value, inboundType: $("#templateInboundType").value,
     outboundDeparture: $("#templateOutboundDeparture").value, outboundArrival: $("#templateOutboundArrival").value,
     inboundDeparture: $("#templateInboundDeparture").value, inboundArrival: $("#templateInboundArrival").value,
@@ -1687,6 +1779,11 @@ $("#retrySyncButton").addEventListener("click", syncOfflineQueue);
 $("#timetableDayFilter").addEventListener("change", () => { state.editingTemplateKey = null; renderTimetableEditor(); editTemplate(null); });
 $("#timetableOperationFilter").addEventListener("change", () => { state.editingTemplateKey = null; renderTimetableEditor(); editTemplate(null); });
 $("#timetableForm").addEventListener("submit", saveTemplate);
+$("#templateLine").addEventListener("change", applyTemplateLine);
+$("#templateShape").addEventListener("change", applyTemplateLine);
+$("#templateOutboundType").addEventListener("change", () => toggleTemplateLeg("outbound"));
+$("#templateInboundType").addEventListener("change", () => toggleTemplateLeg("inbound"));
+["#templateDeparture", "#templateArrival", "#templateOutboundDeparture", "#templateInboundArrival"].forEach((id) => $(id).addEventListener("change", () => mirrorTemplateClock(id)));
 $("#newTemplateButton").addEventListener("click", () => editTemplate(null));
 $("#schoolPointForm").addEventListener("submit", saveSchoolPoint);
 $("#captureSchoolPoint").addEventListener("click", captureSchoolPoint);

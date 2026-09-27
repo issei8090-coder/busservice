@@ -822,11 +822,37 @@ func (s *Store) publicTrips(date, day string) []PublicTrip {
 			Status:            entry.Status,
 			DelayMinutes:      entry.DelayMinutes,
 			Details:           entry.Details,
-			Points:            stopTimes(entry.Route, entry.SchoolDeparture, entry.SchoolArrival, legs, outbound, inbound),
+			Points:            exactStopTimes(stopTimes(entry.Route, entry.SchoolDeparture, entry.SchoolArrival, legs, outbound, inbound), entry),
 		}
 		trips = append(trips, trip)
 	}
 	return trips
+}
+
+// exactStopTimes は元ダイヤに入っている駅の実時刻を、区間所要からの推定より優先します。
+// 駅が1つの便だけが対象です。経由のある便は駅ごとに別の便として登録されています。
+func exactStopTimes(points []StopPoint, entry PublicEntry) []StopPoint {
+	if len(points) == 0 || len(entry.Stops) != 1 {
+		return points
+	}
+	for index := range points {
+		if points[index].Stop != entry.Stops[0] {
+			continue
+		}
+		exact := false
+		if entry.StationArrival != "" {
+			points[index].Arrival = entry.StationArrival
+			exact = true
+		}
+		if entry.StationDeparture != "" {
+			points[index].Departure = entry.StationDeparture
+			exact = true
+		}
+		if exact {
+			points[index].Estimated = false
+		}
+	}
+	return points
 }
 
 // crowdWindows は混雑予測を組み立てます。
@@ -973,6 +999,28 @@ func (s *Store) publicEventSettings() map[string]string {
 	}
 }
 
+// afterParty は後夜祭のあとに順次発車する便がある日だけ、案内の文を返します。
+// 時刻表には最終便の後ろに置き、3方向すべてに同じ案内を出します。
+func (s *Store) afterParty(day string) map[string]any {
+	s.mu.RLock()
+	found := false
+	for _, t := range s.state.Timetable {
+		if t.Day == day && strings.Contains(t.Details, afterPartyMark) {
+			found = true
+			break
+		}
+	}
+	s.mu.RUnlock()
+	if !found {
+		return nil
+	}
+	stops := make([]string, 0, 4)
+	for _, stop := range s.listStops() {
+		stops = append(stops, stop.Name)
+	}
+	return map[string]any{"note": "後夜祭が終わり次第、順次発車します", "stops": stops}
+}
+
 // publicGuide は一般用画面が必要とする情報を1度にまとめて返します。
 func (a *App) publicGuide(w http.ResponseWriter, r *http.Request) {
 	day := strings.TrimSpace(r.URL.Query().Get("day"))
@@ -989,6 +1037,7 @@ func (a *App) publicGuide(w http.ResponseWriter, r *http.Request) {
 		"trips":       a.store.publicTrips(date, day),
 		"stops":       a.store.listStops(),
 		"legs":        a.store.listLegs(),
+		"afterParty":  a.store.afterParty(day),
 		"notices":     a.store.listNotices(day),
 		"programs":    a.store.listPrograms(day),
 		"crowd":       a.store.crowdWindows(date, day),

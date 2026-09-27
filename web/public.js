@@ -676,7 +676,29 @@ function renderTimetableBody(container) {
     else if (isNext) row.append(element("span", "trip-state", "次の便"));
     table.append(row);
   });
+  appendAfterPartyRows(table);
   container.append(table);
+}
+
+// 後夜祭のあとの便は時刻が決まっていません。最終便の後ろに、3方向まとめて出します。
+function appendAfterPartyRows(table) {
+  const afterParty = state.data?.afterParty;
+  if (!afterParty || state.table.direction !== "outbound") return;
+  const stops = (afterParty.stops || []).filter((name) => !state.table.stop || name === state.table.stop);
+  if (!stops.length) return;
+  const head = element("div", "hour-head");
+  head.append(element("span", "num", "後夜祭のあと"));
+  head.append(element("span", null, `${stops.length}方向`));
+  table.append(head);
+  stops.forEach((name) => {
+    const row = element("div", "trip");
+    row.append(element("div", "trip-time", "順次"));
+    const body = element("div", "trip-body");
+    body.append(element("strong", null, `学校 発　${name}ゆき`));
+    body.append(element("span", null, afterParty.note));
+    row.append(body);
+    table.append(row);
+  });
 }
 
 /* ---------- 乗り場をさがす ---------- */
