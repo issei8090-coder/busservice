@@ -1741,6 +1741,27 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	_ = json.NewEncoder(w).Encode(value)
 }
 
+// etagMatches は If-None-Match が今のETagを指しているかを見ます。
+// 前段のCloudflareは中身を圧縮し直すとき、こちらの付けた "abc" を W/"abc" へ
+// 書き換えます。文字列のまま比べると必ず食い違い、毎回全文を送ることになります。
+// 弱い印を外し、カンマ区切りも見ます。
+func etagMatches(header, tag string) bool {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return false
+	}
+	if header == "*" {
+		return true
+	}
+	tag = strings.TrimPrefix(tag, "W/")
+	for _, candidate := range strings.Split(header, ",") {
+		if strings.TrimPrefix(strings.TrimSpace(candidate), "W/") == tag {
+			return true
+		}
+	}
+	return false
+}
+
 // writeJSONCached は中身からETagを作り、前と同じなら本文を送りません。
 // 一般用の画面は開いているあいだ取り直すので、ここが通信量のほとんどを占めます。
 func writeJSONCached(w http.ResponseWriter, r *http.Request, value any) {
@@ -1754,7 +1775,7 @@ func writeJSONCached(w http.ResponseWriter, r *http.Request, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("ETag", tag)
 	w.Header().Set("Cache-Control", "no-cache")
-	if r.Header.Get("If-None-Match") == tag {
+	if etagMatches(r.Header.Get("If-None-Match"), tag) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
@@ -2538,7 +2559,7 @@ func staticHandler(files fs.FS) http.Handler {
 		if tag, ok := tags[r.URL.Path]; ok {
 			w.Header().Set("ETag", tag)
 			w.Header().Set("Cache-Control", "no-cache")
-			if r.Header.Get("If-None-Match") == tag {
+			if etagMatches(r.Header.Get("If-None-Match"), tag) {
 				w.WriteHeader(http.StatusNotModified)
 				return
 			}
