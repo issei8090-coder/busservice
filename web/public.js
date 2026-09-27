@@ -213,6 +213,10 @@ function chooseJourney(direction, all, wish) {
     const inTime = departable.filter((item) => clockMinutes(item.arrival) !== null && clockMinutes(item.arrival) <= limit);
     if (inTime.length) {
       const main = inTime[inTime.length - 1];
+      // 「何時ごろ」なので、ぴったりの便だけでなく、もっと早く着く便も候補に出します。
+      // 早い便が無いときは、この次の便を出します。
+      const earlier = inTime.slice(0, -1).reverse().slice(0, 3);
+      if (earlier.length) return { main, rest: earlier, restKind: "earlier", late: false };
       const later = departable.filter((item) => clockMinutes(item.departure) > clockMinutes(main.departure));
       return { main, rest: later.slice(0, 3), late: false };
     }
@@ -521,10 +525,10 @@ function resultCard(direction, journey, options = {}) {
   return card;
 }
 
-function followList(direction, rest) {
+function followList(direction, rest, kind) {
   if (!rest.length) return null;
   const box = document.createElement("div");
-  box.append(element("p", "follow-head", "この次の便"));
+  box.append(element("p", "follow-head", kind === "earlier" ? "もっと早く学校に着く便" : "この次の便"));
   const list = element("ul", "follow");
   rest.forEach((item) => {
     const row = document.createElement("li");
@@ -585,7 +589,7 @@ function renderJourneyBody(direction, container) {
     }
     container.append(resultCard(direction, picked.main,
       { late: picked.late, afterLast: picked.afterLast, gap, withPrograms: direction === "inbound" }));
-    const follow = followList(direction, picked.rest);
+    const follow = followList(direction, picked.rest, picked.restKind);
     if (follow) container.append(follow);
   }
 
