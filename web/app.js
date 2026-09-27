@@ -1373,33 +1373,84 @@ function renderFleet() {
   if (!$("#schoolPointForm").contains(document.activeElement)) {
     $("#schoolLatitude").value = state.settings.schoolLatitude || "";
     $("#schoolLongitude").value = state.settings.schoolLongitude || "";
-  $("#schoolRadius").value = state.settings.schoolRadius || 35;
+    $("#schoolRadius").value = state.settings.schoolRadius || 35;
+    $("#garageLatitude").value = state.settings.garageLatitude || "";
+    $("#garageLongitude").value = state.settings.garageLongitude || "";
   }
-  const school = state.settings.schoolLatitude || state.settings.schoolLongitude ? { latitude: state.settings.schoolLatitude, longitude: state.settings.schoolLongitude, label: "⓪ 学校" } : null;
-  if ($("#fleetView").classList.contains("active")) window.BusRoutes?.renderFleetMap?.($("#fleetMap"), state.routeProfiles, vehicles.map((item) => item.position).filter(Boolean), school);
+  const school = pointOf(state.settings.schoolLatitude, state.settings.schoolLongitude, "⓪ 学校");
+  const garage = pointOf(state.settings.garageLatitude, state.settings.garageLongitude, "車庫");
+  if ($("#fleetView").classList.contains("active")) window.BusRoutes?.renderFleetMap?.($("#fleetMap"), state.routeProfiles, vehicles.map((item) => item.position).filter(Boolean), school, garage);
 }
 
 async function saveSchoolPoint(event) {
   event.preventDefault();
-  const payload = { schoolLatitude: Number($("#schoolLatitude").value), schoolLongitude: Number($("#schoolLongitude").value), schoolRadius: Number($("#schoolRadius").value || 35) };
+  const payload = {
+    schoolLatitude: Number($("#schoolLatitude").value), schoolLongitude: Number($("#schoolLongitude").value),
+    schoolRadius: Number($("#schoolRadius").value || 35),
+    garageLatitude: Number($("#garageLatitude").value || 0), garageLongitude: Number($("#garageLongitude").value || 0),
+  };
   setBusy(true);
   try {
     state.settings = await api("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     renderFleet();
-    toast("学校地点⓪を保存しました");
+    toast("学校地点⓪と車庫を保存しました");
   } catch (error) { toast(error.message, "error"); }
   finally { setBusy(false); }
 }
 
-function captureSchoolPoint() {
+// 0のままの座標は未設定の印です。地図には出しません。
+function pointOf(latitude, longitude, label) {
+  return Number(latitude) || Number(longitude) ? { latitude: Number(latitude), longitude: Number(longitude), label } : null;
+}
+
+// 学校⓪と車庫の入力欄です。地図と現在地の取得で共通に使います。
+const pointFields = {
+  school: { latitude: "#schoolLatitude", longitude: "#schoolLongitude", map: "#schoolPointMap", button: "#captureSchoolPoint", label: "⓪ 学校" },
+  garage: { latitude: "#garageLatitude", longitude: "#garageLongitude", map: "#garagePointMap", button: "#captureGaragePoint", label: "車庫" },
+};
+const pointPickers = {};
+
+function writePoint(kind, point) {
+  const field = pointFields[kind];
+  $(field.latitude).value = Number(point.latitude).toFixed(7);
+  $(field.longitude).value = Number(point.longitude).toFixed(7);
+  pointPickers[kind]?.setPoint(point);
+}
+
+function currentPoint(kind) {
+  const field = pointFields[kind];
+  return { latitude: Number($(field.latitude).value || 0), longitude: Number($(field.longitude).value || 0) };
+}
+
+// 緯度と経度は数字で打つと間違えやすいので、地図を押して入れられるようにします。
+function togglePointMap(kind, button) {
+  const box = $(pointFields[kind].map);
+  const opening = box.hidden;
+  box.hidden = !opening;
+  button.textContent = opening ? "地図を閉じる" : "地図から選ぶ";
+  if (!opening) return;
+  if (!pointPickers[kind]) {
+    pointPickers[kind] = window.BusRoutes?.createPointPicker?.(box.querySelector(".osm-map"), {
+      point: currentPoint(kind),
+      onPick: (point) => writePoint(kind, point),
+    });
+    if (!pointPickers[kind]) { toast("地図を読み込めませんでした", "error"); return; }
+  } else {
+    pointPickers[kind].setPoint(currentPoint(kind));
+  }
+  // 閉じている間は大きさが取れないので、開いたあとに描き直します。
+  setTimeout(() => pointPickers[kind].show(), 0);
+}
+
+function capturePoint(kind) {
   if (!navigator.geolocation) { toast("この端末では位置情報を利用できません", "error"); return; }
-  $("#captureSchoolPoint").disabled = true;
+  const button = $(pointFields[kind].button);
+  button.disabled = true;
   navigator.geolocation.getCurrentPosition((result) => {
-    $("#schoolLatitude").value = result.coords.latitude.toFixed(7);
-    $("#schoolLongitude").value = result.coords.longitude.toFixed(7);
-    $("#captureSchoolPoint").disabled = false;
+    writePoint(kind, { latitude: result.coords.latitude, longitude: result.coords.longitude });
+    button.disabled = false;
     toast("現在地を取得しました。端末精度は約" + Math.round(result.coords.accuracy) + "mです");
-  }, () => { $("#captureSchoolPoint").disabled = false; toast("現在地を取得できませんでした", "error"); }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+  }, () => { button.disabled = false; toast("現在地を取得できませんでした", "error"); }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
 }
 
 function renderAll() {
@@ -1801,7 +1852,17 @@ $("#templateInboundType").addEventListener("change", () => toggleTemplateLeg("in
 ["#templateDeparture", "#templateArrival", "#templateOutboundDeparture", "#templateInboundArrival"].forEach((id) => $(id).addEventListener("change", () => mirrorTemplateClock(id)));
 $("#newTemplateButton").addEventListener("click", () => editTemplate(null));
 $("#schoolPointForm").addEventListener("submit", saveSchoolPoint);
-$("#captureSchoolPoint").addEventListener("click", captureSchoolPoint);
+$("#captureSchoolPoint").addEventListener("click", () => capturePoint("school"));
+$("#captureGaragePoint").addEventListener("click", () => capturePoint("garage"));
+$("#schoolPointForm").addEventListener("click", (event) => {
+  const open = event.target.closest("[data-point-map]");
+  if (open) { togglePointMap(open.dataset.pointMap, open); return; }
+  const zoom = event.target.closest("[data-point-zoom]");
+  if (!zoom) return;
+  const kind = zoom.closest("[data-point-map], .point-map")?.id === "garagePointMap" ? "garage" : "school";
+  if (zoom.dataset.pointZoom === "in") pointPickers[kind]?.zoomIn();
+  else pointPickers[kind]?.zoomOut();
+});
 $("#serviceDate").addEventListener("change", (event) => { state.date = event.target.value; loadDashboard(); });
 $("#searchInput").addEventListener("input", (event) => { state.query = event.target.value; renderRuns(); });
 $("#clearSearchButton").addEventListener("click", clearRunSearch);

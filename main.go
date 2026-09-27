@@ -108,6 +108,9 @@ type AppSettings struct {
 	SchoolLatitude  float64 `json:"schoolLatitude"`
 	SchoolLongitude float64 `json:"schoolLongitude"`
 	SchoolRadius    float64 `json:"schoolRadius"`
+	// 車庫の場所です。0のままなら未設定として扱い、地図には出しません。
+	GarageLatitude  float64 `json:"garageLatitude"`
+	GarageLongitude float64 `json:"garageLongitude"`
 	// 一般用画面で日付として見せる開催日です。土曜ダイヤと日曜ダイヤに対応します。
 	EventName     string `json:"eventName"`
 	EventSaturday string `json:"eventSaturday"`
@@ -1055,6 +1058,9 @@ func (s *Store) saveSettings(input AppSettings) (AppSettings, error) {
 	if input.SchoolLatitude < -90 || input.SchoolLatitude > 90 || input.SchoolLongitude < -180 || input.SchoolLongitude > 180 {
 		return AppSettings{}, errors.New("学校地点が正しくありません")
 	}
+	if input.GarageLatitude < -90 || input.GarageLatitude > 90 || input.GarageLongitude < -180 || input.GarageLongitude > 180 {
+		return AppSettings{}, errors.New("車庫の地点が正しくありません")
+	}
 	if input.SchoolRadius < 5 {
 		input.SchoolRadius = 5
 	}
@@ -1073,7 +1079,7 @@ func (s *Store) saveSettings(input AppSettings) (AppSettings, error) {
 		}
 	}
 	s.state.Settings = input
-	s.addEventLocked("", "school-point", "学校地点⓪を更新")
+	s.addEventLocked("", "school-point", "学校地点⓪と車庫を更新")
 	return input, s.saveLocked()
 }
 
@@ -1795,6 +1801,8 @@ func (a *App) settings(w http.ResponseWriter, r *http.Request) {
 			SchoolLatitude  *float64  `json:"schoolLatitude"`
 			SchoolLongitude *float64  `json:"schoolLongitude"`
 			SchoolRadius    *float64  `json:"schoolRadius"`
+			GarageLatitude  *float64  `json:"garageLatitude"`
+			GarageLongitude *float64  `json:"garageLongitude"`
 			EventName       *string   `json:"eventName"`
 			EventSaturday   *string   `json:"eventSaturday"`
 			EventSunday     *string   `json:"eventSunday"`
@@ -1815,6 +1823,12 @@ func (a *App) settings(w http.ResponseWriter, r *http.Request) {
 		}
 		if input.SchoolRadius != nil {
 			merged.SchoolRadius = *input.SchoolRadius
+		}
+		if input.GarageLatitude != nil {
+			merged.GarageLatitude = *input.GarageLatitude
+		}
+		if input.GarageLongitude != nil {
+			merged.GarageLongitude = *input.GarageLongitude
 		}
 		if input.EventName != nil {
 			merged.EventName = *input.EventName

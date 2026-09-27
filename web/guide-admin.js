@@ -137,8 +137,48 @@ function stopCard(stop) {
   grid.append(landmark);
   body.append(grid);
 
+  // 緯度と経度は数字で打つと間違えやすいので、地図を押して入れられるようにします。
+  const mapBox = document.createElement("div");
+  mapBox.className = "stop-map";
+  mapBox.hidden = true;
+  const shell = document.createElement("div");
+  shell.className = "stop-map-shell";
+  const canvas = document.createElement("div");
+  canvas.className = "osm-map";
+  canvas.tabIndex = 0;
+  canvas.setAttribute("role", "application");
+  canvas.setAttribute("aria-label", "乗り場の位置を選ぶ地図");
+  const controls = document.createElement("div");
+  controls.className = "stop-map-controls";
+  [["in", "＋", "拡大"], ["out", "−", "縮小"], ["here", "現在地", "現在地を使う"]].forEach(([key, text, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.mapAction = key;
+    button.textContent = text;
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    controls.append(button);
+  });
+  const credit = document.createElement("a");
+  credit.className = "stop-map-credit";
+  credit.href = "https://www.openstreetmap.org/copyright";
+  credit.target = "_blank";
+  credit.rel = "noopener";
+  credit.textContent = "© OpenStreetMap";
+  shell.append(canvas, controls, credit);
+  const mapHint = document.createElement("p");
+  mapHint.className = "stop-map-hint";
+  mapHint.textContent = "地図を押すと、その場所の緯度と経度が入ります。矢印キーで動かしてEnterでも選べます。";
+  mapBox.append(shell, mapHint);
+  body.append(mapBox);
+
   const actions = document.createElement("div");
   actions.className = "stop-actions";
+  const pick = document.createElement("button");
+  pick.type = "button";
+  pick.className = "button";
+  pick.dataset.action = "pick-stop-point";
+  pick.textContent = "地図から選ぶ";
   const save = document.createElement("button");
   save.type = "button";
   save.className = "button primary";
@@ -164,15 +204,82 @@ function stopCard(stop) {
   remove.className = "button danger";
   remove.dataset.action = "delete-stop";
   remove.textContent = "削除";
-  actions.append(save, hint, spacer2);
+  actions.append(save, pick, hint, spacer2);
   if (stop.id) actions.append(remove);
   body.append(actions);
   card.append(body);
   return card;
 }
 
+// 乗り場ごとの地図です。開いたときに作り、閉じても残します。
+const stopPickers = new Map();
+
+function stopField(card, key) {
+  return card.querySelector(`input[data-field="${key}"]`);
+}
+
+// 地図で押した場所を緯度と経度へ入れます。小数は7桁で十分です。
+function writeStopPoint(card, point) {
+  stopField(card, "latitude").value = Number(point.latitude).toFixed(7);
+  stopField(card, "longitude").value = Number(point.longitude).toFixed(7);
+}
+
+function toggleStopMap(card, button) {
+  const box = card.querySelector(".stop-map");
+  if (!box) return;
+  const opening = box.hidden;
+  box.hidden = !opening;
+  button.textContent = opening ? "地図を閉じる" : "地図から選ぶ";
+  if (!opening) return;
+  const current = {
+    latitude: Number(stopField(card, "latitude").value || 0),
+    longitude: Number(stopField(card, "longitude").value || 0),
+  };
+  let picker = stopPickers.get(card);
+  if (!picker) {
+    picker = window.BusRoutes?.createPointPicker?.(card.querySelector(".osm-map"), {
+      point: current,
+      onPick: (point) => writeStopPoint(card, point),
+    });
+    if (!picker) {
+      box.querySelector(".stop-map-hint").textContent = "地図を読み込めませんでした。緯度と経度を直接入れてください。";
+      return;
+    }
+    stopPickers.set(card, picker);
+  } else {
+    picker.setPoint(current);
+  }
+  // 閉じている間は大きさが取れないので、開いたあとに描き直します。
+  setTimeout(() => picker.show(), 0);
+}
+
+// 乗り場に立って押すと、その場所が入ります。
+function useCurrentPosition(card, button) {
+  if (!navigator.geolocation) {
+    toast("この端末では位置情報を使えません", "stop");
+    return;
+  }
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "取得中";
+  navigator.geolocation.getCurrentPosition((result) => {
+    const point = { latitude: result.coords.latitude, longitude: result.coords.longitude };
+    writeStopPoint(card, point);
+    stopPickers.get(card)?.setPoint(point);
+    button.disabled = false;
+    button.textContent = original;
+    toast(`現在地を入れました。精度は約${Math.round(result.coords.accuracy)}mです`);
+  }, () => {
+    button.disabled = false;
+    button.textContent = original;
+    toast("現在地を取得できませんでした", "stop");
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+}
+
 function renderStops() {
   const list = $("#stopCards");
+  stopPickers.forEach((picker) => picker.destroy());
+  stopPickers.clear();
   list.replaceChildren();
   if (!state.stops.length) {
     const empty = document.createElement("p");
@@ -672,6 +779,21 @@ document.addEventListener("click", async (event) => {
   if (removeLeg) {
     removeLeg.closest(".leg-row").remove();
     renderLegCheck();
+    return;
+  }
+  const pickPoint = event.target.closest('[data-action="pick-stop-point"]');
+  if (pickPoint) {
+    toggleStopMap(pickPoint.closest(".stop-card"), pickPoint);
+    return;
+  }
+  const mapAction = event.target.closest("[data-map-action]");
+  if (mapAction) {
+    const card = mapAction.closest(".stop-card");
+    const picker = stopPickers.get(card);
+    if (!picker) return;
+    if (mapAction.dataset.mapAction === "in") picker.zoomIn();
+    if (mapAction.dataset.mapAction === "out") picker.zoomOut();
+    if (mapAction.dataset.mapAction === "here") useCurrentPosition(card, mapAction);
     return;
   }
   const saveStop = event.target.closest('[data-action="save-stop"]');

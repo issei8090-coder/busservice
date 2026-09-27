@@ -95,3 +95,32 @@
   font:inherit;font-size:14px;line-height:1.8;resize:vertical;
 }
 .field-note{display:block;margin-top:6px;color:#5a6472;font-size:12.5px;line-height:1.6}
+
+/* 乗り場の位置を選ぶ地図 */
+.stop-map{margin-top:14px}
+.stop-map-shell{
+  position:relative;height:clamp(260px,42vh,420px);
+  border:1px solid #b8c7d6;border-radius:14px;overflow:hidden;background:#e8edf1;
+}
+.stop-map .osm-map{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:crosshair;outline-offset:-4px}
+.stop-map .osm-tile-layer,.stop-map .osm-overlay{position:absolute;inset:0;width:100%;height:100%}
+.stop-map .osm-tile-layer img{position:absolute;width:256px;height:256px;max-width:none;user-select:none}
+.stop-map .osm-overlay{pointer-events:none}
+.stop-map .osm-waypoint circle{fill:#fff;stroke:#0b2744;stroke-width:3}
+.stop-map .osm-waypoint text{fill:#0b2744;font-size:11px;font-weight:900;text-anchor:middle}
+.stop-map-controls{
+  position:absolute;z-index:4;top:10px;left:10px;display:grid;overflow:hidden;
+  border:1px solid #b9c8d7;border-radius:10px;background:#fff;box-shadow:0 5px 18px rgba(23,50,77,.14);
+}
+.stop-map-controls button{
+  min-width:46px;min-height:42px;padding:0 8px;border:0;border-bottom:1px solid #dce4eb;border-radius:0;
+  background:#fff;color:#173b5f;font:inherit;font-size:13px;font-weight:900;cursor:pointer;
+}
+.stop-map-controls button:last-child{border-bottom:0;font-size:11px}
+.stop-map-controls button:hover{background:#edf5fc}
+.stop-map-controls button[disabled]{color:#8b98a6}
+.stop-map-credit{
+  position:absolute;z-index:4;right:5px;bottom:4px;padding:2px 5px;
+  color:#24445f;background:rgba(255,255,255,.88);font-size:10px;text-decoration:none;
+}
+.stop-map-hint{margin:6px 0 0;color:#5a6472;font-size:12.5px;line-height:1.6}

@@ -60,3 +60,15 @@ button{padding:1.3em 3em;font-size:12px;text-transform:none;letter-spacing:1.2px
 @media(prefers-reduced-motion:reduce){.launch-panel,.launch-operation-grid button,.drive-leg-switch button{transition:none}}
 .leg-passenger-pair{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px 8px}.leg-passenger-pair>span{color:#5c7184;font-size:10px;font-weight:900}.leg-passenger-pair .passenger-stepper{min-width:0}.leg-passenger-pair .passenger-stepper.compact{grid-template-columns:32px minmax(54px,1fr) 32px 40px}.leg-passenger-pair .passenger-stepper.compact button{min-width:32px}.mobile-controls .leg-passenger-pair{flex:1}@media(max-width:720px){.leg-passenger-pair{grid-template-columns:42px minmax(0,1fr)}}
 .launch-operation-grid button.previous{border-color:#36f9c7;box-shadow:0 0 0 3px rgba(54,249,199,.18)}
+
+/* 学校⓪と車庫を地図から選ぶ */
+.point-map-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.point-map{margin-top:10px}
+.point-map-shell{position:relative;height:clamp(240px,34vh,360px);border:1px solid #b8c7d6;border-radius:14px;overflow:hidden;background:#e8edf1}
+.point-map-controls{position:absolute;z-index:4;top:10px;left:10px;display:grid;overflow:hidden;border:1px solid #b9c8d7;border-radius:10px;background:#fff;box-shadow:0 5px 18px rgba(23,50,77,.14)}
+.point-map-controls button{min-width:44px;min-height:40px;padding:0 8px;border:0;border-bottom:1px solid #dce4eb;border-radius:0;background:#fff;color:#173b5f;font-weight:900;box-shadow:none;transform:none}
+.point-map-controls button:last-child{border-bottom:0}
+.point-map-controls button:hover{background:#edf5fc;color:#173b5f;transform:none;box-shadow:none}
+.point-map-credit{position:absolute;z-index:4;right:5px;bottom:4px;padding:2px 5px;color:#24445f;background:rgba(255,255,255,.88);font-size:10px;text-decoration:none}
+.osm-garage-marker circle{fill:#fff;stroke:#3f5a74;stroke-width:4}
+.osm-garage-marker text{fill:#2b455c;font-size:12px;font-weight:900;text-anchor:middle}

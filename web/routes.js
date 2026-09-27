@@ -41,6 +41,7 @@
       this.position = null;
       this.positions = [];
       this.school = null;
+      this.garage = null;
       this.drag = null;
       this.tiles = document.createElement("div");
       this.tiles.className = "osm-tile-layer";
@@ -57,7 +58,7 @@
       this.observer.observe(element);
       this.render();
     }
-    setData({ waypoints = [], waypointLabels = [], geometry = [], routes = [], color = "#1e60aa", position = null, positions = [], school = null }) {
+    setData({ waypoints = [], waypointLabels = [], geometry = [], routes = [], color = "#1e60aa", position = null, positions = [], school = null, garage = null }) {
       this.waypoints = waypoints;
       this.waypointLabels = waypointLabels;
       this.geometry = geometry;
@@ -66,6 +67,7 @@
       this.position = position;
       this.positions = positions;
       this.school = school;
+      this.garage = garage;
       this.render();
     }
     destroy() { this.observer?.disconnect(); }
@@ -186,6 +188,16 @@
         circle.setAttribute("cx", screen.x); circle.setAttribute("cy", screen.y); circle.setAttribute("r", 15);
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
         text.setAttribute("x", screen.x); text.setAttribute("y", screen.y - 22); text.textContent = "⓪ 学校";
+        group.append(circle, text); this.overlay.append(group);
+      }
+      if (this.garage) {
+        const screen = toScreen(this.garage);
+        const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        group.setAttribute("class", "osm-garage-marker");
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", screen.x); circle.setAttribute("cy", screen.y); circle.setAttribute("r", 13);
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", screen.x); text.setAttribute("y", screen.y - 20); text.textContent = "車庫";
         group.append(circle, text); this.overlay.append(group);
       }
       const positionGroups = new Map();
@@ -309,12 +321,33 @@
     renderDriveMap(element, profiles, position) { if (!element) return; driveMap?.destroy(); const list = Array.isArray(profiles) ? profiles : [profiles]; driveRoutes = list.map((profile) => ({ geometry: profile.geometry || [], color: profile.color || "#36f9c7" })); const points = driveRoutes.flatMap((route) => route.geometry); driveMap = new OSMMap(element); driveMap.setData({ routes: driveRoutes, position }); driveMap.fit([...points, ...(position ? [position] : [])]); },
     updateDrivePosition(position) { if (driveMap) driveMap.setData({ routes: driveRoutes, position }); },
     closeDriveMap() { driveMap?.destroy(); driveMap = null; driveRoutes = []; },
-    renderFleetMap(element, profiles, positions, school) {
+    // 地図を押して地点を1つ選ぶための小さな地図です。案内設定の乗り場で使います。
+    createPointPicker(element, { point = null, onPick = null } = {}) {
+      if (!element) return null;
+      const map = new OSMMap(element, (picked) => {
+        map.setData({ waypoints: [picked], waypointLabels: ["乗"] });
+        onPick?.(picked);
+      });
+      if (located(point)) {
+        map.setData({ waypoints: [point], waypointLabels: ["乗"] });
+        map.fit([point]);
+      } else {
+        map.fit([]);
+      }
+      return {
+        zoomIn: () => map.setZoom(map.zoom + 1),
+        zoomOut: () => map.setZoom(map.zoom - 1),
+        show: () => map.render(),
+        setPoint: (next) => { map.setData({ waypoints: located(next) ? [next] : [], waypointLabels: ["乗"] }); if (located(next)) map.fit([next]); },
+        destroy: () => map.destroy(),
+      };
+    },
+    renderFleetMap(element, profiles, positions, school, garage) {
       if (!element) return;
       if (!fleetMap || fleetMap.element !== element) { fleetMap?.destroy(); fleetMap = new OSMMap(element); fleetFitted = false; }
       const routes = (profiles || []).map((profile) => ({ geometry: profile.geometry || [], color: profile.color || "#1e60aa" }));
-      fleetMap.setData({ routes, positions: positions || [], school });
-      const points = routes.flatMap((route) => route.geometry).concat(positions || []).concat(school ? [school] : []).filter(located);
+      fleetMap.setData({ routes, positions: positions || [], school, garage });
+      const points = routes.flatMap((route) => route.geometry).concat(positions || []).concat(school ? [school] : []).concat(garage ? [garage] : []).filter(located);
       if (points.length && !fleetFitted) { fleetMap.fit(points); fleetFitted = true; }
     },
   };
