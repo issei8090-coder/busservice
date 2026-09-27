@@ -115,12 +115,29 @@ function lineInfoURL(lineName) {
   return RAIL_INFO[operator] || RAIL_INFO_DEFAULT;
 }
 
-// 駅の時刻表を開きます。乗換案内の検索ページは、行き先が無いと入口へ回され、
-// その入口は Yahoo!乗換案内アプリが持っていく住所（先方の
-// apple-app-site-association が "/" を登録）なので、アプリを入れている人は
-// 現在時刻で開き直されてしまいます。時刻表 /timetable/ は登録が無いため、
-// ブラウザで開きます。何時台を見ればよいかは、リンクの脇に時刻を書いて伝えます。
-function stationTimetableURL(stop) {
+// その乗り場に、バスの発車までに着く電車を調べます。
+// 到着時刻での検索ができるのは乗換案内なので、地図ではなくそちらへ渡します。
+function trainToStopURL(stop, departure) {
+  if (!stop) return "";
+  const minutes = clockMinutes(departure);
+  if (!Number.isFinite(minutes)) return "";
+  const by = Math.max(0, minutes - (stop.walkMinutes || 0));
+  const parts = String(state.date || "").split("-");
+  const when = parts.length === 3
+    ? `&y=${parts[0]}&m=${parts[1]}&d=${parts[2]}`
+    : "";
+  // type=4 は「到着時刻で検索」です。
+  return `https://transit.yahoo.co.jp/search/result?to=${encodeURIComponent(`${stop.name}駅`)}`
+    + `${when}&hh=${String(Math.floor(by / 60)).padStart(2, "0")}&m1=${Math.floor((by % 60) / 10)}&m2=${(by % 60) % 10}&type=4`;
+}
+
+// 帰りの便。その乗り場に着いたあと、そこから乗れる電車を調べます。
+// 乗換案内の検索ページは、行き先が無いと入口へ回されます。その入口は
+// Yahoo!乗換案内アプリが持っていく住所なので、アプリを入れている人は
+// 現在時刻で開き直されてしまいます。駅の時刻表のページはアプリが持って
+// いかないため、こちらへ渡します。何時台を見ればよいかは、リンクの脇に
+// バスの到着時刻を書いて伝えます。
+function trainFromStopURL(stop) {
   if (!stop) return "";
   return `https://transit.yahoo.co.jp/timetable/search?q=${encodeURIComponent(stop.name)}`;
 }
@@ -461,11 +478,11 @@ function resultCard(direction, journey, options = {}) {
     if (direction === "inbound") {
       add(mapURL(stop), "map", "乗り場の地図", `${stop.name}駅`);
       addLine();
-      add(stationTimetableURL(stop), "train", "この便に間に合う電車",
-        `${clockText(journey.departure)}までに${stop.name}駅へ　時刻表を開きます`);
+      add(trainToStopURL(stop, journey.departure), "train", "この便に間に合う電車",
+        `${clockText(journey.departure)}までに${stop.name}駅へ`);
     } else {
       addLine();
-      add(stationTimetableURL(stop), "train", "この便から乗れる電車",
+      add(trainFromStopURL(stop), "train", "この便から乗れる電車",
         `${clockText(journey.arrival)}に${stop.name}駅着　時刻表を開きます`);
     }
     if (links.childElementCount) main.append(links);
