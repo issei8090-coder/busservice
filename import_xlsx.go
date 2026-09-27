@@ -310,7 +310,7 @@ func noteText(note string) string {
 	case "終":
 		return "この駅で終了、学校へは戻りません"
 	case afterPartyMark:
-		return "後夜祭終了後、順次発車"
+		return "後夜祭（花火）終了後、順次発車"
 	case "回送", "団体専用", "|", "^", "<":
 		return ""
 	}

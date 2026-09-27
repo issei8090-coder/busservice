@@ -1018,7 +1018,7 @@ func (s *Store) afterParty(day string) map[string]any {
 	for _, stop := range s.listStops() {
 		stops = append(stops, stop.Name)
 	}
-	return map[string]any{"note": "後夜祭が終わり次第、順次発車します", "stops": stops}
+	return map[string]any{"note": "後夜祭（花火）終了後、順次発車します", "stops": stops}
 }
 
 // publicGuide は一般用画面が必要とする情報を1度にまとめて返します。

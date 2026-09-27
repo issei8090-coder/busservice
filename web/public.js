@@ -602,8 +602,8 @@ function renderJourneyBody(direction, container) {
       box.append(element("strong", null, "最終便のご案内"));
       box.append(element("p", null, afterParty.note));
       box.append(element("p", null, last
-        ? `時刻表では学校発 ${clockText(last.departure)} が最後ですが、そのあとは後夜祭の終了に合わせて発車します。`
-        : "発車の時刻は後夜祭の終了に合わせます。"));
+        ? `時刻表では学校発 ${clockText(last.departure)} が最後ですが、そのあとは後夜祭（花火）終了後に順次発車します。`
+        : "発車の時刻は後夜祭（花火）の終了に合わせます。"));
       container.append(box);
     } else if (last) {
       const box = element("div", "last-bus");
