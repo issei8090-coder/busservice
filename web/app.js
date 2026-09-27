@@ -1144,32 +1144,40 @@ function clockValue(value) {
 	return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
 
-// 路線ごとの駅の並びです。経路の文字列はここから組み立てます。
-const lineStations = {
-	"ふじみ野線": ["ふじみ野"],
-	"南古谷線": ["南古谷"],
-	"南古谷経由本川越線": ["南古谷", "本川越"],
-	"本川越発南古谷経由線": ["本川越", "南古谷"],
-	"本川越線": ["本川越"],
+// 路線ごとの行き先と、通るだけの駅です。経路の文字列はここから組み立てます。
+// 通るだけの駅は「（南古谷経由）」と括弧で書き、停まる駅と区別します。
+const lineShapes = {
+	"ふじみ野線": { station: "ふじみ野" },
+	"南古谷線": { station: "南古谷" },
+	"南古谷経由本川越線": { station: "本川越", via: "南古谷経由", viaOn: "outbound" },
+	"本川越発南古谷経由線": { station: "本川越", via: "南古谷経由", viaOn: "inbound" },
+	"本川越線": { station: "本川越" },
 };
 
 // routeText は路線と向きから「学校 → ふじみ野 → 学校」のような経路を作ります。
 function routeText(line, shape) {
-	const stations = lineStations[line];
-	if (!stations) return "";
-	if (shape === "outbound") return ["学校", ...stations].join(" → ");
-	if (shape === "inbound") return [...stations, "学校"].join(" → ");
-	return ["学校", ...stations, "学校"].join(" → ");
+	const item = lineShapes[line];
+	if (!item) return "";
+	// 書き方は取り込みと同じにします。「学校 → （南古谷経由）→ 本川越」です。
+	const out = item.via && item.viaOn === "outbound" ? `（${item.via}）→ ` : "";
+	const back = item.via && item.viaOn === "inbound" ? `（${item.via}）→ ` : "";
+	if (shape === "outbound") return `学校 → ${out}${item.station}`;
+	if (shape === "inbound") return `${item.station} → ${back}学校`;
+	return `学校 → ${out}${item.station} → ${back}学校`;
 }
 
 // lineFromRoute は経路の文字列から路線を判定します。取り込んだ便には路線が入っています。
 function lineFromRoute(route) {
+	const text = String(route || "");
+	const nodes = text.split("→").map((part) => part.trim()).filter(Boolean);
 	const stops = [];
-	String(route || "").split("→").forEach((part) => {
-		const name = part.trim();
-		if (name && name !== "学校" && !stops.includes(name)) stops.push(name);
+	nodes.forEach((name) => {
+		if (name === "学校" || name.startsWith("（") || name.startsWith("(")) return;
+		if (!stops.includes(name)) stops.push(name);
 	});
 	const key = stops.join(",");
+	// 「（南古谷経由）」が駅より前にあれば行きの経由、後にあれば帰りの経由です。
+	if (key === "本川越" && text.includes("南古谷経由")) return text.indexOf("南古谷経由") < text.indexOf("本川越") ? "南古谷経由本川越線" : "本川越発南古谷経由線";
 	if (key === "ふじみ野") return "ふじみ野線";
 	if (key === "南古谷") return "南古谷線";
 	if (key === "本川越") return "本川越線";

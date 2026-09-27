@@ -187,6 +187,12 @@ function incompleteStationTimes(item) {
   return missing;
 }
 
+// 同じ路線の便は、経由の駅ごとに分けた同じ一回りです。
+// 出発が同じでも時間が重なっていても正しいので、重複として数えません。
+function sameTrip(a, b) {
+  return Boolean(a && b && a.line) && a.line === b.line;
+}
+
 function buildChecks() {
   const checks = [];
   const groups = new Map();
@@ -202,10 +208,10 @@ function buildChecks() {
     sorted.forEach((item) => {
       const start = clockMinutes(item.plannedDeparture);
       const end = clockMinutes(item.plannedArrival);
-      if (start !== null && seen.has(start)) {
-        checks.push({ tone: "stop", text: `${day} 運用${operation}　${clockText(item.plannedDeparture)}発が${seen.get(start)}便と${item.columnNo}便で重複しています`, target: item });
-      } else if (start !== null) {
-        seen.set(start, item.columnNo);
+      if (start !== null && seen.has(start) && !sameTrip(seen.get(start), item)) {
+        checks.push({ tone: "stop", text: `${day} 運用${operation}　${clockText(item.plannedDeparture)}発が${seen.get(start).columnNo}便と${item.columnNo}便で重複しています`, target: item });
+      } else if (start !== null && !seen.has(start)) {
+        seen.set(start, item);
       }
       if (start !== null && end !== null && end <= start) {
         checks.push({ tone: "stop", text: `${day} 運用${operation} ${item.columnNo}便　帰着${clockText(item.plannedArrival)}が出発${clockText(item.plannedDeparture)}より前です`, target: item });
@@ -216,7 +222,7 @@ function buildChecks() {
       const current = sorted[index];
       const previousEnd = clockMinutes(previous.plannedArrival);
       const currentStart = clockMinutes(current.plannedDeparture);
-      if (previousEnd !== null && currentStart !== null && currentStart < previousEnd) {
+      if (previousEnd !== null && currentStart !== null && currentStart < previousEnd && !sameTrip(previous, current)) {
         checks.push({ tone: "stop", text: `${day} 運用${operation}　${previous.columnNo}便（帰着${clockText(previous.plannedArrival)}）と${current.columnNo}便（出発${clockText(current.plannedDeparture)}）の時間が重なっています`, target: current });
       }
     }

@@ -78,10 +78,10 @@ type SearchSignal struct {
 
 // LineStatus は沿線の運行情報です。自動取得できないときは手入力を使います。
 type LineStatus struct {
-	Railway   string `json:"railway"`
+	Railway string `json:"railway"`
 	// 乗り場のまとまりと、路線記章のファイル名です。
-	Group string `json:"group"`
-	Badge string `json:"badge"`
+	Group     string `json:"group"`
+	Badge     string `json:"badge"`
 	Name      string `json:"name"`
 	Status    string `json:"status"` // normal trouble unknown
 	Text      string `json:"text"`
@@ -116,7 +116,7 @@ func routeNodes(route string) []string {
 	nodes := make([]string, 0, 5)
 	for _, part := range strings.Split(route, "→") {
 		name := strings.TrimSpace(part)
-		if name != "" {
+		if name != "" && !routeAnnotation(name) {
 			nodes = append(nodes, name)
 		}
 	}
@@ -1451,7 +1451,6 @@ func (a *App) resetMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	a.writeMediaList(w)
 }
-
 
 // splitChairWords は入力の改行を1行ずつに分けます。
 // 途中の空行は段落の間として残し、前後の余分な空行だけ落とします。

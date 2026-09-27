@@ -252,7 +252,11 @@ func (t columnTrip) notes(extra ...string) string {
 	if t.Vehicle != "" {
 		parts = append(parts, t.Vehicle)
 	}
-	parts = append(parts, extra...)
+	for _, text := range extra {
+		if text != "" {
+			parts = append(parts, text)
+		}
+	}
 	if t.GarageDepart.Clock != "" {
 		parts = append(parts, "出庫 "+t.GarageDepart.Clock+"（車庫から回送）")
 	}
@@ -297,25 +301,35 @@ func noteText(note string) string {
 }
 
 // templates は1列を、アプリの元ダイヤへ直します。
-// 経由の駅は乗車人数を分けて数えるため、別の便として登録します。
+// 駅が1つの便は学校との往復1件です。経由のある便は乗り降りする駅ごとに
+// 片道の便へ分けます。例 学校 → 本川越 → 南古谷 → 学校 は
+// 「学校 → 本川越」「本川越 → 学校」「南古谷 → 学校」の3件になります。
+// 乗車人数を駅ごとに数えるためです。
 func (t columnTrip) templates(nextColumn func() int) []Template {
 	destination := t.destination()
 	if destination.empty() {
 		return nil
 	}
-	list := make([]Template, 0, 3)
-	list = append(list, t.roundTemplate(destination, nextColumn()))
-	// 往路の途中で降りる駅は「学校 → 駅」の片道便にします。
-	if !t.OutboundVia.empty() && t.OutboundVia != destination {
-		if item, ok := t.outboundLegTemplate(t.OutboundVia, destination, nextColumn()); ok {
-			list = append(list, item)
-		}
+	outboundVia := !t.OutboundVia.empty() && t.OutboundVia != destination
+	inboundVia := !t.InboundVia.empty() && t.InboundVia != destination
+	if !outboundVia && !inboundVia {
+		return []Template{t.roundTemplate(destination, nextColumn())}
 	}
-	// 復路の途中で乗る駅は「駅 → 学校」の片道便にします。
-	if !t.InboundVia.empty() && t.InboundVia != destination {
-		if item, ok := t.inboundLegTemplate(t.InboundVia, destination, nextColumn()); ok {
-			list = append(list, item)
+	list := make([]Template, 0, 4)
+	add := func(item Template, ok bool) {
+		if !ok {
+			return
 		}
+		item.ColumnNo = nextColumn()
+		list = append(list, item)
+	}
+	if outboundVia {
+		add(t.outboundLegTemplate(t.OutboundVia, destination))
+	}
+	add(t.outboundLegTemplate(destination, destination))
+	add(t.inboundLegTemplate(destination, destination))
+	if inboundVia {
+		add(t.inboundLegTemplate(t.InboundVia, destination))
 	}
 	return list
 }
@@ -360,15 +374,16 @@ func (t columnTrip) roundTemplate(stop stationStop, column int) Template {
 	return item
 }
 
-// outboundLegTemplate は往路の途中で降りる駅の便です。復路はありません。
-func (t columnTrip) outboundLegTemplate(stop stationStop, destination stationStop, column int) (Template, bool) {
+// outboundLegTemplate は学校から駅へ向かう片道の便です。
+// 経由の駅へ向かう分と、終点へ向かう分を、それぞれ1件にします。
+func (t columnTrip) outboundLegTemplate(stop stationStop, destination stationStop) (Template, bool) {
 	if t.SchoolDeparture.Clock == "" || stop.Arrival.Clock == "" {
 		return Template{}, false
 	}
 	item := Template{
-		Day: t.Day, OperationNo: t.Operation, ColumnNo: column,
+		Day: t.Day, OperationNo: t.Operation,
 		Line:              t.lineName(),
-		Route:             schoolNode + " → " + stop.Name,
+		Route:             schoolNode + " → " + t.viaLabel(t.OutboundVia, destination, stop) + stop.Name,
 		OutboundType:      t.outboundType(),
 		InboundType:       "none",
 		OutboundDeparture: t.SchoolDeparture.Clock,
@@ -376,19 +391,24 @@ func (t columnTrip) outboundLegTemplate(stop stationStop, destination stationSto
 		PlannedDeparture:  t.SchoolDeparture.Clock,
 		PlannedArrival:    stop.Arrival.Clock,
 	}
-	item.Details = t.notes(destination.Name + "行きと同じ車両の" + stop.Name + "区間")
+	if stop == destination {
+		item.Details = t.notes(t.viaNote(t.OutboundVia, destination))
+	} else {
+		item.Details = t.notes(destination.Name + "行きと同じ車両の" + stop.Name + "区間")
+	}
 	return item, true
 }
 
-// inboundLegTemplate は復路の途中から乗る駅の便です。往路はありません。
-func (t columnTrip) inboundLegTemplate(stop stationStop, destination stationStop, column int) (Template, bool) {
+// inboundLegTemplate は駅から学校へ向かう片道の便です。
+// 終点から乗る分と、復路の途中から乗る分を、それぞれ1件にします。
+func (t columnTrip) inboundLegTemplate(stop stationStop, destination stationStop) (Template, bool) {
 	if stop.Depart.Clock == "" || t.SchoolArrival.Clock == "" {
 		return Template{}, false
 	}
 	item := Template{
-		Day: t.Day, OperationNo: t.Operation, ColumnNo: column,
+		Day: t.Day, OperationNo: t.Operation,
 		Line:             t.lineName(),
-		Route:            stop.Name + " → " + schoolNode,
+		Route:            stop.Name + " → " + t.viaLabel(t.InboundVia, destination, stop) + schoolNode,
 		OutboundType:     "none",
 		InboundType:      t.inboundType(),
 		InboundDeparture: stop.Depart.Clock,
@@ -396,8 +416,30 @@ func (t columnTrip) inboundLegTemplate(stop stationStop, destination stationStop
 		PlannedDeparture: stop.Depart.Clock,
 		PlannedArrival:   t.SchoolArrival.Clock,
 	}
-	item.Details = t.notes(destination.Name + "発と同じ車両の" + stop.Name + "区間")
+	if stop == destination {
+		item.Details = t.notes(t.viaNote(t.InboundVia, destination))
+	} else {
+		item.Details = t.notes(destination.Name + "発と同じ車両の" + stop.Name + "区間")
+	}
 	return item, true
+}
+
+// viaLabel は終点までの便の経路へ入れる「（南古谷経由）→ 」です。
+// 通るだけの駅は乗り降りの相手ではないので、括弧に入れて停まる駅と区別します。
+// 経由の駅で乗り降りする分は、別の便として登録しています。
+func (t columnTrip) viaLabel(via stationStop, destination stationStop, stop stationStop) string {
+	if stop != destination || t.viaNote(via, destination) == "" {
+		return ""
+	}
+	return "（" + t.viaNote(via, destination) + "）→ "
+}
+
+// viaNote は「南古谷経由」のように、通る駅を表す文です。
+func (t columnTrip) viaNote(via stationStop, destination stationStop) string {
+	if via.empty() || via == destination {
+		return ""
+	}
+	return via.Name + "経由"
 }
 
 func firstClock(values ...string) string {

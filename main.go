@@ -267,9 +267,22 @@ func migrateLineName(name string) string {
 	return strings.TrimSpace(name)
 }
 
+// routeAnnotation は経路の中の「（南古谷経由）」のような注記です。
+// 通るだけの駅は、停まる駅として数えません。
+func routeAnnotation(name string) bool {
+	return strings.HasPrefix(name, "（") || strings.HasPrefix(name, "(")
+}
+
 // lineFromRoute は経路の文字列から路線を判定します。手入力した便のための備えです。
 func lineFromRoute(route string) string {
 	stops := routeStops(route)
+	// 「（南古谷経由）」が駅より前にあれば行きの経由、後にあれば帰りの経由です。
+	if len(stops) == 1 && stops[0] == "本川越" && strings.Contains(route, "南古谷経由") {
+		if strings.Index(route, "南古谷経由") < strings.Index(route, "本川越") {
+			return lineHonkawagoeViaMK
+		}
+		return lineHonkawagoeToMK
+	}
 	switch {
 	case len(stops) == 1 && stops[0] == "ふじみ野":
 		return lineFujimino
@@ -2257,7 +2270,7 @@ func routeStops(route string) []string {
 	stops := make([]string, 0, 4)
 	for _, part := range strings.Split(route, "→") {
 		name := strings.TrimSpace(part)
-		if name == "" || name == "学校" {
+		if name == "" || name == "学校" || routeAnnotation(name) {
 			continue
 		}
 		known := false
