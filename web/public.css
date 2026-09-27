@@ -391,9 +391,11 @@ p{margin:0}
 .beyond-band{
   position:absolute;left:-8%;right:-8%;z-index:1;
   top:var(--feet,62%);height:var(--lineH,3.2em);
-  /* 入りは左から払い、抜けは帯の向きに沿って流します。 */
-  clip-path:inset(0 calc((1 - var(--enter,1)) * 100%) 0 0);
-  transform:rotate(-9deg) translate3d(calc(var(--exit,0) * -120%),0,0);
+  /* 入りは左から払い、帯ごと少し送り込みます。抜けは帯の向きに沿って流します。
+     払うだけだと面が湧いて出たように見えるので、わずかに動かします。 */
+  clip-path:inset(0 calc((1 - var(--write,1)) * 100%) 0 0);
+  transform:rotate(-9deg)
+    translate3d(calc((1 - var(--write,1)) * -9% + var(--exit,0) * -120%),0,0);
   background:
     radial-gradient(72% 230% at 6% 52%,#1d4fb5 0%,rgba(29,79,181,0) 58%),
     radial-gradient(58% 200% at 38% 40%,#2a2f9e 0%,rgba(42,47,158,0) 60%),
@@ -409,8 +411,10 @@ p{margin:0}
 .beyond-line{
   position:absolute;left:-8%;right:-8%;z-index:3;
   top:var(--feet,62%);
-  clip-path:inset(0 calc((1 - var(--enter,1)) * 108%) 0 0);
-  transform:rotate(-9deg) translate3d(calc(var(--exit,0) * 64%),0,0);
+  clip-path:inset(0 calc((1 - var(--write,1)) * 108%) 0 0);
+  /* 字は帯より遅れて、右から帯の中へ入ります。抜けるときは帯と別れて右へ。 */
+  transform:rotate(-9deg)
+    translate3d(calc((1 - var(--write,1)) * 16% + var(--exit,0) * 64%),0,0);
   padding:.16em calc(var(--gutter) + 8%);
   pointer-events:none;
 }

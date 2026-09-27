@@ -1416,10 +1416,13 @@ const band = (value, up, upTo, down, downTo) => Math.min(ramp(value, up, upTo), 
 // 段の進み具合。段が画面の下に現れたときが 0、上へ抜けきったときが 1。
 // inTo までに入りきり、outFrom から抜け始めます。その間が落ち着いた状態で、
 // ここが無いと帯と足が交わる瞬間が生まれません。
+// 入りは inFrom から inTo までで、段の上端が画面の下から上へ来る道のりを
+// 0→1 とした目盛りです。跳ぶ姿は段の半ばにいるので、端の少しで入れ終えると
+// 姿が見えてくる前に動きが済んでしまいます。ほぼ一画面ぶんかけて入れます。
 const BEATS = [
-  { el: document.querySelector(".pro-name"), inTo: 0.22, outFrom: 0.52 },
-  { el: document.querySelector(".pro-leap"), inTo: 0.34, outFrom: 0.64 },
-  { el: document.querySelector(".pro-word"), inTo: 0.34, outFrom: 0.70 },
+  { el: document.querySelector(".pro-name"), inFrom: 0, inTo: 0.22, outFrom: 0.52 },
+  { el: document.querySelector(".pro-leap"), inFrom: 0.06, inTo: 0.88, outFrom: 0.64 },
+  { el: document.querySelector(".pro-word"), inFrom: 0, inTo: 0.34, outFrom: 0.70 },
 ];
 
 {
@@ -1445,11 +1448,24 @@ const BEATS = [
       const appear = hold((vh - rect.top) / Math.max(1, vh));
       // 出: 段が実際に画面の上へ抜けた割合。止まっていれば 0。
       const past = hold(-rect.top / Math.max(1, rect.height));
-      const enter = hold(appear / beat.inTo);
+      const enter = hold((appear - beat.inFrom) / Math.max(0.001, beat.inTo - beat.inFrom));
       const exit = hold((past - beat.outFrom) / (1 - beat.outFrom));
       node.style.setProperty("--enter", enter.toFixed(4));
       node.style.setProperty("--exit", exit.toFixed(4));
     });
+
+    // Go Beyond の帯は、跳ぶ姿の足もと（--feet）に置いてあります。
+    // 姿と同じ目盛りで払うと、帯が画面に上がってくる前に払い終わってしまうので、
+    // 帯そのものの高さで測ります。画面の下に現れたところから、
+    // 画面の半ばまで上がるあいだに、一本書き切ります。
+    const form = document.querySelector(".pro-form");
+    if (form) {
+      const box = form.getBoundingClientRect();
+      const feet = parseFloat(getComputedStyle(form).getPropertyValue("--feet"));
+      const bandTop = box.top + (Number.isFinite(feet) ? feet : box.height * 0.62);
+      const write = hold((vh0 - bandTop) / Math.max(1, vh0 * 0.55));
+      form.style.setProperty("--write", write.toFixed(4));
+    }
 
     // 柿色から夜への渡りは、斜めの面が広がることで起こします。
     // 題字の画面を送り終えるころに全面が夜になります。
