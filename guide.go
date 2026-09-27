@@ -1031,6 +1031,18 @@ func (a *App) publicGuide(w http.ResponseWriter, r *http.Request) {
 	if _, err := time.Parse("2006-01-02", date); err != nil {
 		date = ""
 	}
+	// 日付を省かれたときは、その曜日の開催日で組み立てて返します。空のまま返すと、
+	// 画面は応答で開催日を知ってから、同じ内容をもう一度取りに来ることになります。
+	if date == "" {
+		settings := a.store.settings()
+		candidate := settings.EventSunday
+		if day == "土曜" {
+			candidate = settings.EventSaturday
+		}
+		if _, err := time.Parse("2006-01-02", candidate); err == nil {
+			date = candidate
+		}
+	}
 	writeJSON(w, 200, map[string]any{
 		"day":         day,
 		"date":        date,

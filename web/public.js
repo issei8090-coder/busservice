@@ -1204,14 +1204,21 @@ async function load(options = {}) {
     if (!response.ok) throw new Error("時刻を読み込めませんでした");
     state.data = await response.json();
     state.days = buildDays(state.data.settings || {});
+    // サーバーは日付を省くと、その曜日の開催日で組み立てて返します。返ってきた
+    // 日付をそのまま採り、取り直しは本当に別の日を見るときだけにします。
+    const served = { day: state.data.day || state.day, date: state.data.date || "" };
     if (!state.days.some((item) => item.day === state.day && item.date === state.date)) {
       const today = state.days.find((item) => item.date === todayISO());
       const target = today || state.days[0];
-      if (target && (target.day !== state.day || target.date !== state.date)) {
+      if (target && (target.day !== served.day || target.date !== served.date)) {
         state.day = target.day;
         state.date = target.date;
         state.loading = true;
         return load(options);
+      }
+      if (target) {
+        state.day = target.day;
+        state.date = target.date;
       }
     }
     state.error = "";
