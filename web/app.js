@@ -262,6 +262,7 @@ async function loadDashboard(silent = false) {
     state.timetable = data.timetable || [];
     state.settings = data.settings || state.settings;
     $("#timetableCount").textContent = `${data.timetableCount || 0}便`;
+    if ($("#exportDate") && !$("#exportDate").value) $("#exportDate").value = state.date;
     storeJSON(cacheKey, { runs: state.runs, events: state.events, routeProfiles: state.routeProfiles, timetable: state.timetable, settings: state.settings, timetableCount: data.timetableCount || 0 });
     renderAll();
   } catch (error) {
@@ -1466,6 +1467,39 @@ function capturePoint(kind) {
   }, () => { button.disabled = false; toast("現在地を取得できませんでした", "error"); }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
 }
 
+// 書き出しはファイルとして受け取ります。api()はJSONを読もうとするので使えません。
+// 認証はクッキーなので、そのまま取りに行けます。
+async function downloadExport(path, button) {
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "書き出しています";
+  try {
+    const response = await fetch(path);
+    if (!response.ok) {
+      let message = "書き出せませんでした";
+      try { message = (await response.json()).error || message; } catch {}
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    // ファイル名はサーバーが付けた名前を使います。無ければ日付から作ります。
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+    const plain = /filename="([^"]+)"/i.exec(disposition);
+    const name = utf8 ? decodeURIComponent(utf8[1]) : plain ? plain[1] : "export";
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = name;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    // すぐに消すと保存が始まらない端末があるので、少し待ってから開放します。
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast(name + " を保存しました");
+  } catch (error) { toast(error.message, "error"); }
+  finally { button.disabled = false; button.textContent = original; }
+}
+
 function renderAll() {
   const result = metrics();
   $("#metricWaiting").textContent = result.waiting;
@@ -1864,6 +1898,11 @@ $("#templateOutboundType").addEventListener("change", () => toggleTemplateLeg("o
 $("#templateInboundType").addEventListener("change", () => toggleTemplateLeg("inbound"));
 ["#templateDeparture", "#templateArrival", "#templateOutboundDeparture", "#templateInboundArrival"].forEach((id) => $(id).addEventListener("change", () => mirrorTemplateClock(id)));
 $("#newTemplateButton").addEventListener("click", () => editTemplate(null));
+$("#exportRunsButton").addEventListener("click", (event) => {
+  const date = $("#exportDate").value;
+  downloadExport(date ? `/api/exports/runs?date=${encodeURIComponent(date)}` : "/api/exports/runs", event.currentTarget);
+});
+$("#exportStoreButton").addEventListener("click", (event) => downloadExport("/api/exports/store", event.currentTarget));
 $("#schoolPointForm").addEventListener("submit", saveSchoolPoint);
 $("#schoolPointForm").addEventListener("input", () => { state.schoolPointDirty = true; });
 $("#captureSchoolPoint").addEventListener("click", () => capturePoint("school"));

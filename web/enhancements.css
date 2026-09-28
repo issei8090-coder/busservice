@@ -72,3 +72,10 @@ button{padding:1.3em 3em;font-size:12px;text-transform:none;letter-spacing:1.2px
 .point-map-credit{position:absolute;z-index:4;right:5px;bottom:4px;padding:2px 5px;color:#24445f;background:rgba(255,255,255,.88);font-size:10px;text-decoration:none}
 .osm-garage-marker circle{fill:#fff;stroke:#3f5a74;stroke-width:4}
 .osm-garage-marker text{fill:#2b455c;font-size:12px;font-weight:900;text-anchor:middle}
+
+/* 書き出しの運行日。設定の札の中で、ボタンの上に置きます。 */
+.export-day{display:grid;gap:5px;margin-bottom:12px}
+.export-day span{font-size:12px;font-weight:800;color:var(--muted,#64748b)}
+.export-day input{min-height:44px;padding:0 12px;border:1px solid #cbd6e2;border-radius:9px;background:#fff}
+.settings-card .button.wide+.button.wide{margin-top:8px}
+.settings-card>small{display:block;margin-top:10px;color:var(--muted,#64748b);font-size:12px}

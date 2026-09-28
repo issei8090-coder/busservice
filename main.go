@@ -2227,6 +2227,9 @@ func main() {
 	mux.Handle("POST /api/route-profiles/auto-assign", app.require("admin")(http.HandlerFunc(app.autoAssignRoutes)))
 	mux.Handle("POST /api/routes/resolve", app.require("admin")(http.HandlerFunc(app.resolveRoute)))
 	mux.Handle("POST /api/timetable/import", app.require("admin")(http.HandlerFunc(app.importTimetable)))
+	// 運行の記録を手元へ取り出す口です。保存先は消えることがあるので、控えを残せるようにします。
+	mux.Handle("GET /api/exports/runs", app.require("admin")(http.HandlerFunc(app.exportRuns)))
+	mux.Handle("GET /api/exports/store", app.require("admin")(http.HandlerFunc(app.exportStore)))
 	mux.Handle("GET /api/timetable", app.require("admin")(http.HandlerFunc(app.timetable)))
 	mux.Handle("PUT /api/timetable", app.require("admin")(http.HandlerFunc(app.timetable)))
 	mux.Handle("DELETE /api/timetable/{day}/{operation}/{column}", app.require("admin")(http.HandlerFunc(app.timetableEntry)))

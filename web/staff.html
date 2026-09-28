@@ -133,6 +133,15 @@
               </label>
               <button class="button primary wide" id="importButton" disabled>検証して取り込む</button>
             </article>
+            <article class="card settings-card">
+              <span class="settings-icon"><svg viewBox="0 0 24 24"><path d="M12 4v12m0 0 5-5m-5 5-5-5M5 19h14"/></svg></span>
+              <h2>運行の記録を書き出す</h2>
+              <p>人数と出発、到着を手元へ保存します。保存先が入れ替わると記録は消えるため、運行を終えたら書き出してください。</p>
+              <label class="export-day"><span>運行日</span><input id="exportDate" type="date"></label>
+              <button class="button primary wide" id="exportRunsButton">この日の記録をCSVで保存</button>
+              <button class="button secondary wide" id="exportStoreButton">すべての設定と記録をJSONで保存</button>
+              <small>CSVは表計算で開けます。JSONは保存先へ戻せる控えです。</small>
+            </article>
             <article class="card settings-card info-card">
               <span class="settings-icon"><svg viewBox="0 0 24 24"><path d="M12 8h.01M11 12h1v5h1M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/></svg></span>
               <h2>取込後の動き</h2>
