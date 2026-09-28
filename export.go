@@ -161,3 +161,46 @@ func urlEscape(value string) string {
 	}
 	return string(out)
 }
+
+// restore は控えの内容でまるごと置き換えます。控えを取った時点へ戻す操作です。
+func (s *Store) restore(incoming State) error {
+	normalizeState(&incoming)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	previous := len(s.state.Runs)
+	s.state = incoming
+	s.addEventLocked("", "store-import", fmt.Sprintf("控えを読み込み。運行の記録 %d件 → %d件", previous, len(s.state.Runs)))
+	return s.saveLocked()
+}
+
+// importStore は取り出した控えを保存先へ戻します。
+//
+// 無料インスタンスでは保存先がコンテナごと作り直され、当日つけた人数も
+// 出発到着も消えます。シェルが無いのでファイルを置き直すこともできません。
+// 消えたあとに戻れる道は、この口だけです。
+//
+// 中身はそっくり入れ替えます。いま入っている内容は残りません。
+func (a *App) importStore(w http.ResponseWriter, r *http.Request) {
+	// 控えは運行の記録と操作の記録を抱えるので、ほかの入力より大きくなります。
+	// decodeJSON の1MBでは、いちばん戻したい「記録が溜まったあと」で弾かれます。
+	r.Body = http.MaxBytesReader(w, r.Body, 16<<20)
+	var incoming State
+	if err := json.NewDecoder(r.Body).Decode(&incoming); err != nil {
+		writeJSON(w, 400, map[string]string{"error": "控えを読めません。取り出したJSONをそのまま送ってください"})
+		return
+	}
+	// 空や別物を送られて中身を失わないよう、ダイヤが入っていることだけ確かめます。
+	if len(incoming.Timetable) == 0 {
+		writeJSON(w, 400, map[string]string{"error": "元ダイヤの入っていない控えは読み込めません"})
+		return
+	}
+	if err := a.store.restore(incoming); err != nil {
+		writeJSON(w, 500, map[string]string{"error": "控えを保存先へ書けません"})
+		return
+	}
+	writeJSON(w, 200, map[string]any{
+		"timetable": len(incoming.Timetable),
+		"programs":  len(incoming.Programs),
+		"runs":      len(incoming.Runs),
+	})
+}

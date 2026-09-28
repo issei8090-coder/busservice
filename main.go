@@ -200,35 +200,42 @@ func NewStore(filePath string) (*Store, error) {
 	if err := json.Unmarshal(data, &s.state); err != nil {
 		return nil, fmt.Errorf("保存ファイルを読めません: %w", err)
 	}
-	if s.state.Runs == nil {
-		s.state.Runs = map[string]*Run{}
+	normalizeState(&s.state)
+	return s, nil
+}
+
+// normalizeState は読み込んだ内容の抜けを埋め、古い書き方を今の形へ直します。
+// 起動時の読み込みと、控えを戻すときの両方が通ります。どちらか片方だけを
+// 直すと食い違うので、必ずここへ足してください。
+func normalizeState(state *State) {
+	if state.Runs == nil {
+		state.Runs = map[string]*Run{}
 	}
-	if s.state.ProcessedRequests == nil {
-		s.state.ProcessedRequests = map[string]string{}
+	if state.ProcessedRequests == nil {
+		state.ProcessedRequests = map[string]string{}
 	}
-	if s.state.RouteProfiles == nil {
-		s.state.RouteProfiles = map[string]*RouteProfile{}
+	if state.RouteProfiles == nil {
+		state.RouteProfiles = map[string]*RouteProfile{}
 	}
-	if s.state.Settings.SchoolRadius <= 0 {
-		s.state.Settings.SchoolRadius = 35
+	if state.Settings.SchoolRadius <= 0 {
+		state.Settings.SchoolRadius = 35
 	}
 	// 駅名だけで登録していた古い路線名を、いまの5路線の名前へ直します。
-	for _, profile := range s.state.RouteProfiles {
+	for _, profile := range state.RouteProfiles {
 		profile.Line = migrateLineName(profile.Line)
 	}
-	for index := range s.state.Timetable {
-		s.state.Timetable[index].Line = templateLine(s.state.Timetable[index])
+	for index := range state.Timetable {
+		state.Timetable[index].Line = templateLine(state.Timetable[index])
 	}
-	for index := range s.state.Timetable {
-		normalizeTemplate(&s.state.Timetable[index])
+	for index := range state.Timetable {
+		normalizeTemplate(&state.Timetable[index])
 	}
-	for _, run := range s.state.Runs {
+	for _, run := range state.Runs {
 		normalizeRun(run)
 	}
-	if s.state.Version < 5 {
-		s.state.Version = 5
+	if state.Version < 5 {
+		state.Version = 5
 	}
-	return s, nil
 }
 
 func validServiceType(value string) bool {
@@ -2230,6 +2237,7 @@ func main() {
 	// 運行の記録を手元へ取り出す口です。保存先は消えることがあるので、控えを残せるようにします。
 	mux.Handle("GET /api/exports/runs", app.require("admin")(http.HandlerFunc(app.exportRuns)))
 	mux.Handle("GET /api/exports/store", app.require("admin")(http.HandlerFunc(app.exportStore)))
+	mux.Handle("POST /api/imports/store", app.require("admin")(http.HandlerFunc(app.importStore)))
 	mux.Handle("GET /api/timetable", app.require("admin")(http.HandlerFunc(app.timetable)))
 	mux.Handle("PUT /api/timetable", app.require("admin")(http.HandlerFunc(app.timetable)))
 	mux.Handle("DELETE /api/timetable/{day}/{operation}/{column}", app.require("admin")(http.HandlerFunc(app.timetableEntry)))

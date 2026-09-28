@@ -1,5 +1,7 @@
-# ビルド結果
+# ビルド結果。go build は作業フォルダの名前で実行ファイルを作ります。
 bus
+school-bus
+school-bus-go
 
 # macOSが作る一時ファイル
 .DS_Store
@@ -7,3 +9,6 @@ bus
 # ログインの署名に使う鍵。中身は秘密で、置き場ごとに違ってよいものです。
 session.key
 data/session.key
+
+# 本番から落とした控え。人数や担当が入るので配りません。
+backups/
